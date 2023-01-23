@@ -32,6 +32,9 @@ TYPE, PUBLIC :: ControlParameters
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: IPC_KI                      ! Integral gain for the individual pitch controller, [-].
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: IPC_aziOffset               ! Phase offset added to the azimuth angle for the individual pitch controller, [rad].
     REAL(DbKi)                    :: IPC_CornerFreqAct           ! Corner frequency of the first-order actuators model, to induce a phase lag in the IPC signal {0 - Disable}, [rad/s]
+    REAL(DbKi)                    :: DIPC_Amplitude              ! Amplitude of the Dynamic IPC angles [deg]
+    REAL(DBKi)                    :: DIPC_Frequency              ! Frequency of the Dynamic IPC angles [Hz]
+    REAL(DBKi)                    :: DIPC_PhaseOffset            ! Phase offset between the tilt and yaw moments of the Dynamic IPC [deg]
     INTEGER(IntKi)                :: PC_ControlMode              ! Blade pitch control mode {0 - No pitch, fix to fine pitch, 1 - active PI blade pitch control}
     INTEGER(IntKi)                :: PC_GS_n                     ! Amount of gain-scheduling table entries
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: PC_GS_angles                ! Gain-schedule table - pitch angles

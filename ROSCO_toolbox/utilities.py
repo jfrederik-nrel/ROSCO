@@ -68,7 +68,7 @@ def write_DISCON(turbine, controller, param_file='DISCON.IN', txt_filename='Cp_C
     file.write('!------- CONTROLLER FLAGS -------------------------------------------------\n')
     file.write('{0:<12d}        ! F_LPFType			- {{1: first-order low-pass filter, 2: second-order low-pass filter}}, [rad/s] (currently filters generator speed and pitch control signals\n'.format(int(rosco_vt['F_LPFType'])))
     file.write('{0:<12d}        ! F_NotchType		- Notch on the measured generator speed and/or tower fore-aft motion (for floating) {{0: disable, 1: generator speed, 2: tower-top fore-aft motion, 3: generator speed and tower-top fore-aft motion}}\n'.format(int(rosco_vt['F_NotchType'])))
-    file.write('{0:<12d}        ! IPC_ControlMode	- Turn Individual Pitch Control (IPC) for fatigue load reductions (pitch contribution) {{0: off, 1: 1P reductions, 2: 1P+2P reductions}}\n'.format(int(rosco_vt['IPC_ControlMode'])))
+    file.write('{0:<12d}        ! IPC_ControlMode	- Turn Individual Pitch Control (IPC) for fatigue load reductions (pitch contribution) {{0: off, 1: 1P reductions, 2: 1P+2P reductions, 3: Dynamic IPC}}\n'.format(int(rosco_vt['IPC_ControlMode'])))
     file.write('{0:<12d}        ! VS_ControlMode	- Generator torque control mode in above rated conditions {{0: constant torque, 1: constant power, 2: TSR tracking PI control with constant torque, 3: TSR tracking PI control with constant power}}\n'.format(int(rosco_vt['VS_ControlMode'])))
     file.write('{0:<12d}        ! PC_ControlMode    - Blade pitch control mode {{0: No pitch, fix to fine pitch, 1: active PI blade pitch control}}\n'.format(int(rosco_vt['PC_ControlMode'])))
     file.write('{0:<12d}        ! Y_ControlMode		- Yaw control mode {{0: no yaw control, 1: yaw rate control, 2: yaw-by-IPC}}\n'.format(int(rosco_vt['Y_ControlMode'])))
@@ -120,6 +120,9 @@ def write_DISCON(turbine, controller, param_file='DISCON.IN', txt_filename='Cp_C
     file.write('{}! IPC_KI			- Integral gain for the individual pitch controller: first parameter for 1P reductions, second for 2P reductions, [-]\n'.format(''.join('{:<4.3e} '.format(rosco_vt['IPC_KI'][i]) for i in range(len(rosco_vt['IPC_KI'])))))
     file.write('{}! IPC_aziOffset		- Phase offset added to the azimuth angle for the individual pitch controller, [rad]. \n'.format(''.join('{:<4.6f}  '.format(rosco_vt['IPC_aziOffset'][i]) for i in range(len(rosco_vt['IPC_aziOffset'])))))
     file.write('{:<13.1f}       ! IPC_CornerFreqAct - Corner frequency of the first-order actuators model, to induce a phase lag in the IPC signal {{0: Disable}}, [rad/s]\n'.format(rosco_vt['IPC_CornerFreqAct']))
+    file.write('{:<014.5f}      ! DIPC_Amplitude - Amplitude of the Dynamic IPC tilt and yaw signal [deg]\n'.format(rosco_vt['DIPC_Amplitude']))
+    file.write('{:<014.5f}      ! DIPC_Frequency - Frequency of the Dynamic IPC tilt and yaw signal [Hz]\n'.format(rosco_vt['DIPC_Frequency']))
+    file.write('{:<014.5f}      ! DIPC_PhaseOffset - Phase offset between the Dynamic IPC tilt and yaw signal [deg]\n'.format(rosco_vt['DIPC_PhaseOffset']))
     file.write('\n')
     file.write('!------- VS TORQUE CONTROL ------------------------------------------------\n')
     file.write('{:<014.5f}      ! VS_GenEff			- Generator efficiency mechanical power -> electrical power, [should match the efficiency defined in the generator properties!], [%]\n'.format(rosco_vt['VS_GenEff']))
@@ -436,6 +439,9 @@ def DISCON_dict(turbine, controller, txt_filename=None):
     DISCON_dict['IPC_KI']           = [controller.Ki_ipc1p, controller.Ki_ipc2p]
     DISCON_dict['IPC_aziOffset']	= [0.0, 0.0]
     DISCON_dict['IPC_CornerFreqAct'] = 0.0
+    DISCON_dict['DIPC_Amplitude']   = controller.DIPC_amp
+    DISCON_dict['DIPC_Frequency']   = controller.DIPC_freq
+    DISCON_dict['DIPC_PhaseOffset']   = controller.DIPC_phOffset
     # ------- VS TORQUE CONTROL -------
     DISCON_dict['VS_GenEff']		= turbine.GenEff
     DISCON_dict['VS_ArSatTq']		= turbine.rated_torque

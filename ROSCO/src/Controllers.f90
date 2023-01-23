@@ -103,7 +103,7 @@ CONTAINS
         DO K = 1,LocalVar%NumBl ! Loop through all blades, add IPC contribution and limit pitch rate
             LocalVar%PitCom(K) = LocalVar%PC_PitComT + LocalVar%FA_PitCom(K) 
             LocalVar%PitCom(K) = saturate(LocalVar%PitCom(K), LocalVar%PC_MinPit, CntrPar%PC_MaxPit)                    ! Saturate the command using the pitch satauration limits
-            LocalVar%PitCom(K) = LocalVar%PitCom(K) + LocalVar%IPC_PitComF(K)                                          ! Add IPC
+            LocalVar%PitCom(K) = LocalVar%PitCom(K) + LocalVar%IPC_PitComF(K)                                           ! Add IPC
             LocalVar%PitCom(K) = saturate(LocalVar%PitCom(K), LocalVar%PC_MinPit, CntrPar%PC_MaxPit)                    ! Saturate the command using the absolute pitch angle limits
             LocalVar%PitCom(K) = ratelimit(LocalVar%PitCom(K), LocalVar%BlPitch(K), CntrPar%PC_MinRat, CntrPar%PC_MaxRat, LocalVar%DT) ! Saturate the overall command of blade K using the pitch rate limit
         END DO
@@ -406,7 +406,7 @@ CONTAINS
         END DO
         
         ! Integrate the signal and multiply with the IPC gain
-        IF ((CntrPar%IPC_ControlMode >= 1) .AND. (CntrPar%Y_ControlMode /= 2)) THEN
+        IF (((CntrPar%IPC_ControlMode >= 1) .AND. (CntrPar%IPC_ControlMode < 3)) .AND. (CntrPar%Y_ControlMode /= 2)) THEN
             LocalVar%IPC_axisTilt_1P = PIController(axisTilt_1P, LocalVar%IPC_KP(1), LocalVar%IPC_KI(1), -CntrPar%IPC_IntSat, CntrPar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
             LocalVar%IPC_axisYaw_1P = PIController(axisYawF_1P, LocalVar%IPC_KP(1), LocalVar%IPC_KI(1), -CntrPar%IPC_IntSat, CntrPar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
             
@@ -414,6 +414,12 @@ CONTAINS
                 LocalVar%IPC_axisTilt_2P = PIController(axisTilt_2P, LocalVar%IPC_KP(2), LocalVar%IPC_KI(2), -CntrPar%IPC_IntSat, CntrPar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
                 LocalVar%IPC_axisYaw_2P = PIController(axisYawF_2P, LocalVar%IPC_KP(2), LocalVar%IPC_KI(2), -CntrPar%IPC_IntSat, CntrPar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
             END IF
+        ! Set reference yaw/tilt moments for Dynamic IPC
+        ELSEIF ((CntrPar%IPC_ControlMode >=3) .AND. (CntrPar%Y_ControlMode /= 2)) THEN
+            LocalVar%IPC_axisTilt_1P = CntrPar%DIPC_Amplitude*PI/180*sin(LocalVar%Time*2*PI*CntrPar%DIPC_Frequency)
+            LocalVar%IPC_axisYaw_1P = CntrPar%DIPC_Amplitude*PI/180*sin(LocalVar%Time*2*PI*CntrPar%DIPC_Frequency+CntrPar%DIPC_PhaseOffset*PI/180)
+            LocalVar%IPC_axisTilt_2P = 0.0
+            LocalVar%IPC_axisYaw_2P = 0.0
         ELSE
             LocalVar%IPC_axisTilt_1P = 0.0
             LocalVar%IPC_axisYaw_1P = 0.0
@@ -448,7 +454,6 @@ CONTAINS
         DebugVar%axisTilt_2P = axisTilt_2P
         DebugVar%axisYaw_2P = axisYaw_2P
 
-        
 
         ! Add RoutineName to error message
         IF (ErrVar%aviFAIL < 0) THEN

@@ -63,7 +63,7 @@ class Controller():
         self.Fl_Mode            = controller_params['Fl_Mode']
         self.TD_Mode            = controller_params['TD_Mode']
         self.Flp_Mode           = controller_params['Flp_Mode']
-        self.PA_Mode           = controller_params['PA_Mode']
+        self.PA_Mode            = controller_params['PA_Mode']
         self.Ext_Mode           = controller_params['Ext_Mode']
         self.ZMQ_Mode           = controller_params['ZMQ_Mode']
 
@@ -90,7 +90,10 @@ class Controller():
         self.Ki_ipc1p           = controller_params['IPC_Ki1p']
         self.Kp_ipc2p           = controller_params['IPC_Kp2p']
         self.Ki_ipc2p           = controller_params['IPC_Kp2p']
-        self.IPC_Vramp         = controller_params['IPC_Vramp']
+        self.IPC_Vramp          = controller_params['IPC_Vramp']
+        self.DIPC_amp           = controller_params['DIPC_amp']
+        self.DIPC_freq          = controller_params['DIPC_freq']
+        self.DIPC_phOffset      = controller_params['DIPC_phOffset']
 
         #  Optional parameters without defaults
         if self.Flp_Mode > 0:
@@ -331,6 +334,8 @@ class Controller():
         # Set IPC ramp inputs if not already defined
         if max(self.IPC_Vramp) == 0.0:
             self.IPC_Vramp = [turbine.v_rated*0.8, turbine.v_rated]
+
+            #artificial change JF
 
         # Store some variables
         self.v              = v                                  # Wind speed (m/s)

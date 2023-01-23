@@ -289,6 +289,9 @@ CONTAINS
         CALL ParseAry(UnControllerParameters, CurLine, 'IPC_KI', CntrPar%IPC_KI, 2, accINFILE(1), ErrVar )
         CALL ParseAry(UnControllerParameters, CurLine, 'IPC_aziOffset', CntrPar%IPC_aziOffset, 2, accINFILE(1), ErrVar )
         CALL ParseInput(UnControllerParameters,CurLine,'IPC_CornerFreqAct',accINFILE(1),CntrPar%IPC_CornerFreqAct,ErrVar)
+        CALL ParseInput(UnControllerParameters, CurLine, 'DIPC_Amplitude', accINFILE(1), CntrPar%DIPC_Amplitude, ErrVar )
+        CALL ParseInput(UnControllerParameters, CurLine, 'DIPC_Frequency', accINFILE(1), CntrPar%DIPC_Frequency, ErrVar )
+        CALL ParseInput(UnControllerParameters, CurLine, 'DIPC_PhaseOffset', accINFILE(1), CntrPar%DIPC_PhaseOffset, ErrVar )
         CALL ReadEmptyLine(UnControllerParameters,CurLine)
 
         !------------ VS TORQUE CONTROL CONSTANTS ----------------
@@ -588,7 +591,7 @@ CONTAINS
         ENDIF
 
         ! IPC_ControlMode
-        IF ((CntrPar%IPC_ControlMode < 0) .OR. (CntrPar%IPC_ControlMode > 2)) THEN
+        IF ((CntrPar%IPC_ControlMode < 0) .OR. (CntrPar%IPC_ControlMode > 3)) THEN
             ErrVar%aviFAIL = -1
             ErrVar%ErrMsg  = 'IPC_ControlMode must be 0, 1, or 2.'
         ENDIF
