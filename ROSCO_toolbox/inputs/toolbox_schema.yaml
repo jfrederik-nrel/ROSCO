@@ -116,9 +116,9 @@ properties:
             IPC_ControlMode:    
                 type: number
                 minimum: 0
-                maximum: 2
+                maximum: 3
                 default: 0
-                description: Turn Individual Pitch Control (IPC) for fatigue load reductions (pitch contribution) (0- off, 1- 1P reductions, 2- 1P+2P reduction)
+                description: Turn Individual Pitch Control (IPC) for fatigue load reductions (pitch contribution) (0- off, 1- 1P reductions, 2- 1P+2P reduction, 3- Helix)
             VS_ControlMode:     
                 type: number
                 minimum: 0
@@ -374,6 +374,21 @@ properties:
                     minimum: 0.0
                 default: [0.0, 0.0]
                 unit: m/s
+            DIPC_amp:
+                type: number
+                minimum: 0
+                description: Yaw and tilt amplitude for dynamic IPC [deg]
+                default: 0.0
+            DIPC_freq:
+                type: number
+                minimum: 0
+                description: Yaw and tilt frequency for dynamic IPC [Hz]
+                default: 0.0
+            DIPC_phOffset:
+                type: number
+                minimum: -360
+                description: Phase offset between yaw and tilt in dynamic IPC [deg]
+                default: -90
 
             filter_params:
                 type: object
@@ -629,6 +644,18 @@ properties:
                         type: number
                         description: Corner frequency of the first-order actuators model, to induce a phase lag in the IPC signal (0- Disable)
                         units: rad/s
+                    DIPC_Amplitude:
+                        type: number
+                        description: Dynamic IPC amplitude [deg]
+                        unit: deg
+                    DIPC_Frequency:
+                        type: number
+                        description: Dynamic IPC frequency [Hz]
+                        unit: Hz
+                    DIPC_PhaseOffset:
+                        type: number
+                        description: Dynamic IPC phase offset between tilt and yaw [deg]
+                        unit: deg
                     VS_GenEff:
                         type: number
                         description: Generator efficiency mechanical power -> electrical power, should match the efficiency defined in the generator properties

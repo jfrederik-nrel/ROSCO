@@ -432,7 +432,7 @@ CONTAINS
         ENDIF
         
         ! Integrate the signal and multiply with the IPC gain
-        IF ((CntrPar%IPC_ControlMode >= 1) .AND. (CntrPar%Y_ControlMode /= 2)) THEN
+        IF (((CntrPar%IPC_ControlMode >= 1) .AND. (CntrPar%IPC_ControlMode < 3)) .AND. (CntrPar%Y_ControlMode /= 2)) THEN
             LocalVar%IPC_axisTilt_1P = PIController(axisTilt_1P, LocalVar%IPC_KP(1), LocalVar%IPC_KI(1), -LocalVar%IPC_IntSat, LocalVar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
             LocalVar%IPC_axisYaw_1P = PIController(axisYawF_1P, LocalVar%IPC_KP(1), LocalVar%IPC_KI(1), -LocalVar%IPC_IntSat, LocalVar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
             
@@ -440,6 +440,12 @@ CONTAINS
                 LocalVar%IPC_axisTilt_2P = PIController(axisTilt_2P, LocalVar%IPC_KP(2), LocalVar%IPC_KI(2), -LocalVar%IPC_IntSat, LocalVar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
                 LocalVar%IPC_axisYaw_2P = PIController(axisYawF_2P, LocalVar%IPC_KP(2), LocalVar%IPC_KI(2), -LocalVar%IPC_IntSat, LocalVar%IPC_IntSat, LocalVar%DT, 0.0_DbKi, LocalVar%piP, LocalVar%restart, objInst%instPI) 
             END IF
+        ! Set reference yaw/tilt moments for Dynamic IPC
+        ELSEIF ((CntrPar%IPC_ControlMode >=3) .AND. (CntrPar%Y_ControlMode /= 2)) THEN
+            LocalVar%IPC_axisTilt_1P = CntrPar%DIPC_Amplitude*PI/180*sin(LocalVar%Time*2*PI*CntrPar%DIPC_Frequency)
+            LocalVar%IPC_axisYaw_1P = CntrPar%DIPC_Amplitude*PI/180*sin(LocalVar%Time*2*PI*CntrPar%DIPC_Frequency+CntrPar%DIPC_PhaseOffset*PI/180)
+            LocalVar%IPC_axisTilt_2P = 0.0
+            LocalVar%IPC_axisYaw_2P = 0.0
         ELSE
             LocalVar%IPC_axisTilt_1P = 0.0
             LocalVar%IPC_axisYaw_1P = 0.0
