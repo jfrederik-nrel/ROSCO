@@ -820,6 +820,18 @@ CONTAINS
             DebugVar%axisTilt_2P = CntrPar%AWC_amp(1)*sin(StrAzimuth + CntrPar%AWC_clockangle(1)*D2R)
             DebugVar%axisYaw_2P = Error(1)
 
+        ! WIP pulse closed-loop
+        ELSEIF (CntrPar%AWC_Mode == 6) THEN
+
+            Error(1) = LocalVar%rootMOOP(1) + LocalVar%rootMOOP(2) + LocalVar%rootMOOP(3)
+            AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
+                                                            0, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
+                    
+
+            LocalVar%GenTq = 13e5
+
+            DebugVar%axisTilt_1P = AWC_TiltYaw(1)
+
 
         ENDIF
 
