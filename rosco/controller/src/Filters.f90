@@ -210,6 +210,45 @@ CONTAINS
 
     END FUNCTION HPFilter
 !-------------------------------------------------------------------------------------------------------------------------------
+    REAL(DbKi) FUNCTION LeadCompensator( InputSignal, DT, a, CornerFreq, FP, reset, inst, InitialValue)
+    ! Discrete time High-Pass Filter
+        USE ROSCO_Types, ONLY : FilterParameters
+        TYPE(FilterParameters),       INTENT(INOUT)       :: FP 
+
+        REAL(DbKi), INTENT(IN)     :: InputSignal
+        REAL(DbKi), INTENT(IN)     :: DT                       ! time step [s]
+        REAL(DbKi), INTENT(IN)     :: CornerFreq               ! lower corner frequency [rad/s]
+        REAL(DbKi), INTENT(IN)     :: a                     ! upper corner frequency [rad/s]
+        INTEGER(IntKi), INTENT(INOUT)  :: inst                     ! Instance number. Every instance of this function needs to have an unique instance number to ensure instances don't influence each other.
+        LOGICAL(4), INTENT(IN)  :: reset                    ! Reset the filter to the input signal
+        ! Local
+        REAL(DbKi)                 :: K                        ! Constant gain
+        REAL(DbKi), OPTIONAL,  INTENT(IN)          :: InitialValue           ! Value to set when reset 
+        
+        REAL(DbKi)                          :: InitialValue_           ! Value to set when reset
+
+        ! Defaults
+        InitialValue_ = InputSignal
+        IF (PRESENT(InitialValue)) InitialValue_ = InitialValue  
+
+        ! Initialization
+        IF (reset)  THEN
+            FP%hpf_OutputSignalLast(inst) = InitialValue_
+            FP%hpf_InputSignalLast(inst) = InitialValue_
+        ENDIF
+        K = 2.0 / DT
+
+        ! Body
+        LeadCompensator = 1/(1+CornerFreq*K) * ( (CornerFreq*K-1)*FP%HPF_OutputSignalLast(inst) &
+                        + 1/SQRT(a)*(1+a*CornerFreq*K)*InputSignal + 1/SQRT(a)*(1-a*CornerFreq*K)*FP%HPF_InputSignalLast(inst) )
+
+        ! Save signals for next time step
+        FP%HPF_InputSignalLast(inst)   = InputSignal
+        FP%HPF_OutputSignalLast(inst)  = LeadCompensator
+        inst = inst + 1
+
+    END FUNCTION LeadCompensator
+!-------------------------------------------------------------------------------------------------------------------------------
     REAL(DbKi) FUNCTION NotchFilterSlopes(InputSignal, DT, CornerFreq, Damp, FP, iStatus, reset, inst, Moving, InitialValue)
     ! Discrete time inverted Notch Filter with descending slopes, G = CornerFreq*s/(Damp*s^2+CornerFreq*s+Damp*CornerFreq^2)
         USE ROSCO_Types, ONLY : FilterParameters

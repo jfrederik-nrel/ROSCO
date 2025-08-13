@@ -23,17 +23,18 @@ MODULE Controllers
 
 CONTAINS
 !-------------------------------------------------------------------------------------------------------------------------------
-    SUBROUTINE PitchControl(avrSWAP, CntrPar, LocalVar, objInst, DebugVar, ErrVar)
+    SUBROUTINE PitchControl(avrSWAP, CntrPar, LocalVar, objInst, DebugVar, ErrVar, PerfData)
     ! Blade pitch controller, generally maximizes rotor speed below rated (region 2) and regulates rotor speed above rated (region 3)
     !       PC_State = 0, fix blade pitch to fine pitch angle (PC_FinePit)
     !       PC_State = 1, is gain scheduled PI controller 
-        USE ROSCO_Types, ONLY : ControlParameters, LocalVariables, ObjectInstances, DebugVariables, ErrorVariables
+        USE ROSCO_Types, ONLY : ControlParameters, LocalVariables, ObjectInstances, DebugVariables, ErrorVariables, PerformanceData
         
         ! Inputs
         REAL(ReKi),              INTENT(INOUT)       :: avrSWAP(*)   ! The swap array, used to pass data to, and receive data from the DLL controller.
         TYPE(ControlParameters),    INTENT(INOUT)       :: CntrPar
         TYPE(LocalVariables),       INTENT(INOUT)       :: LocalVar
         TYPE(ObjectInstances),      INTENT(INOUT)       :: objInst
+        TYPE(PerformanceData),      INTENT(INOUT)      :: PerfData
         TYPE(DebugVariables),       INTENT(INOUT)       :: DebugVar
         TYPE(ErrorVariables),       INTENT(INOUT)       :: ErrVar
 
@@ -137,7 +138,8 @@ CONTAINS
 
         ! Active wake control
         IF (CntrPar%AWC_Mode > 0) THEN
-            CALL ActiveWakeControl(CntrPar, LocalVar, DebugVar, objInst)
+            CALL ActiveWakeControl(CntrPar, LocalVar, DebugVar, PerfData, objInst, ErrVar)
+            avrSWAP(47) = MAX(0.0_DbKi, LocalVar%GenTq)
         ENDIF
 
         ! Place pitch actuator here, so it can be used with or without open-loop
@@ -655,7 +657,7 @@ CONTAINS
 
 
 !-------------------------------------------------------------------------------------------------------------------------------
-    SUBROUTINE ActiveWakeControl(CntrPar, LocalVar, DebugVar, objInst)
+    SUBROUTINE ActiveWakeControl(CntrPar, LocalVar, DebugVar, PerfData, objInst, ErrVar)
         ! Active wake controller
         !       AWC_Mode = 0, No active wake control
         !       AWC_Mode = 1, SNL active wake control
@@ -663,12 +665,14 @@ CONTAINS
         !       AWC_Mode = 3, Closed-loop Proportional-integral (PI) active wake control
         !       AWC_Mode = 4, Closed-loop Proportional-resonant (PR) active wake control
         !       AWC_Mode = 5, Strouhal transformation based closed-loop active wake control
-        USE ROSCO_Types, ONLY : ControlParameters, LocalVariables, DebugVariables, ObjectInstances
+        USE ROSCO_Types, ONLY : ControlParameters, LocalVariables, DebugVariables, PerformanceData, ObjectInstances, ErrorVariables
 
         TYPE(ControlParameters), INTENT(INOUT)    :: CntrPar
         TYPE(DebugVariables), INTENT(INOUT)       :: DebugVar
         TYPE(LocalVariables), INTENT(INOUT)       :: LocalVar
+        TYPE(PerformanceData), INTENT(INOUT)      :: PerfData
         TYPE(ObjectInstances), INTENT(INOUT)      :: objInst
+        TYPE(ErrorVariables), INTENT(INOUT)       :: ErrVar
 
         ! Local vars
         REAL(DbKi), PARAMETER      :: phi1 = 0.0                       ! Phase difference from first to first blade
@@ -685,7 +689,8 @@ CONTAINS
         REAL(DbKi), DIMENSION(2)   :: Error = [0.0, 0.0]               ! Error in transformed tilt and yaw signals
         REAL(DbKi), DIMENSION(2)   :: FixedFrameM                      ! Measured tilt moment
         REAL(DbKi)                 :: StrAzimuth                       ! Strouhal transformed "azimuth" angle
-        REAL(DbKi)                 :: StartTime                        ! Start time of closed-loop AWC
+        REAL(DbKi)                 :: StartTime = 0                    ! Start time of closed-loop AWC
+        REAL(DbKi)                 :: lambda                           ! Current TSR
 
 
         ! Compute the AWC pitch settings, complex number approach
@@ -823,15 +828,51 @@ CONTAINS
         ! WIP pulse closed-loop
         ELSEIF (CntrPar%AWC_Mode == 6) THEN
 
-            Error(1) = LocalVar%rootMOOP(1) + LocalVar%rootMOOP(2) + LocalVar%rootMOOP(3)
-            AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
-                                                            0, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
-                    
+            ! Now it starts immediately. 
+            ! If we want to use the average WS over one full cycle, we might need to have it start after one full period
+            IF (LocalVar%Time .GT. -1) THEN
 
-            LocalVar%GenTq = 13e5
+                ! TSR estimate. Now assumes U = 9 m/s
+                ! Two improvements: use TUD estimator, or average WS_e over one full cycle
+                lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/9 ! LocalVar%WE%v_h
 
-            DebugVar%axisTilt_1P = AWC_TiltYaw(1)
 
+                Error(1) = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                                                LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) & ! This is the CT estimator using look-up table
+                                                - 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
+                                + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R) ! This is the excitation as defined in the input
+                
+                ! Resonance controller similar to above
+                AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
+                                                                -1e10, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
+
+                ! Implement open-loop blade pitch
+                DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
+                    AWC_angle(K) = D2R*CntrPar%AWC_amp(1)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
+                    LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
+                END DO
+
+                ! TODO: add optional width of compensator
+                ! TF: 1/(sqrt(a)) * (1+aTs) / (1+Ts). a = width^2, T = 1/(2*PI*sqrt(a)*CntrPar%AWC_freq(2))
+                ! width is now set at 10, input 3 is a, input 4 is T
+                AWC_TiltYaw(2) = LeadCompensator( AWC_TiltYaw(1), LocalVar%DT, 100.0, 1/(2*PI*10*CntrPar%AWC_freq(2)), LocalVar%FP, LocalVar%restart, objInst%instHPF, 0.0_DbKi)
+
+                ! At this point, I set the constant generator torque to 1.5e7. Need to change this to whatever the normal torque controller does.
+                LocalVar%GenTq = max(0.0_DbKi, 1.5e7 + AWC_TiltYaw(2))
+
+            ELSE
+                ! Not used right now
+                AWC_TiltYaw(1) = 0.763
+                AWC_TiltYaw(2) = AWC_TiltYaw(1)
+            
+            ENDIF
+
+            ! Output debug signals
+            DebugVar%axisYaw_2P = AWC_TiltYaw(1) !LocalVar%GenTq
+            DebugVar%axisTilt_2P = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                                            LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
+            DebugVar%axisYaw_1P = 0.763-CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            DebugVar%axisTilt_1P = AWC_TiltYaw(2)
 
         ENDIF
 
