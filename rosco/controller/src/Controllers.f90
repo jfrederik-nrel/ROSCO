@@ -139,7 +139,7 @@ CONTAINS
         ! Active wake control
         IF (CntrPar%AWC_Mode > 0) THEN
             CALL ActiveWakeControl(CntrPar, LocalVar, DebugVar, PerfData, objInst, ErrVar)
-            avrSWAP(47) = MAX(0.0_DbKi, LocalVar%GenTq)
+            avrSWAP(47) = MAX(0.0_DbKi, LocalVar%GenTq + LocalVar%PulseGenTq)
         ENDIF
 
         ! Place pitch actuator here, so it can be used with or without open-loop
@@ -828,18 +828,19 @@ CONTAINS
         ! WIP pulse closed-loop
         ELSEIF (CntrPar%AWC_Mode == 6) THEN
 
+            CntrPar%TiltMean = CntrPar%TiltMean + LocalVar%WE%v_h
             ! Now it starts immediately. 
             ! If we want to use the average WS over one full cycle, we might need to have it start after one full period
-            IF (LocalVar%Time .GT. -1) THEN
+            IF (LocalVar%Time .GT. 1/CntrPar%AWC_freq(1)) THEN
 
-                ! TSR estimate. Now assumes U = 9 m/s
-                ! Two improvements: use TUD estimator, or average WS_e over one full cycle
-                lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/9 ! LocalVar%WE%v_h
+                ! TSR estimate. Now averages WS_e over full simulation
+                ! Possible improvement: use TUD estimator
+                lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/(CntrPar%TiltMean/(LocalVar%n_DT+1)) ! LocalVar%WE%v_h
 
 
                 Error(1) = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
                                                 LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) & ! This is the CT estimator using look-up table
-                                                - 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
+                                                !- 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
                                 + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R) ! This is the excitation as defined in the input
                 
                 ! Resonance controller similar to above
@@ -855,15 +856,16 @@ CONTAINS
                 ! TODO: add optional width of compensator
                 ! TF: 1/(sqrt(a)) * (1+aTs) / (1+Ts). a = width^2, T = 1/(2*PI*sqrt(a)*CntrPar%AWC_freq(2))
                 ! width is now set at 10, input 3 is a, input 4 is T
-                AWC_TiltYaw(2) = LeadCompensator( AWC_TiltYaw(1), LocalVar%DT, 100.0, 1/(2*PI*10*CntrPar%AWC_freq(2)), LocalVar%FP, LocalVar%restart, objInst%instHPF, 0.0_DbKi)
+                LocalVar%PulseGenTq = LeadCompensator( AWC_TiltYaw(1), LocalVar%DT, 100.0, 1/(2*PI*10*CntrPar%AWC_freq(2)), LocalVar%FP, LocalVar%restart, objInst%instHPF, 0.0_DbKi)
 
-                ! At this point, I set the constant generator torque to 1.5e7. Need to change this to whatever the normal torque controller does.
-                LocalVar%GenTq = max(0.0_DbKi, 1.5e7 + AWC_TiltYaw(2))
+                ! ! At this point, I set the constant generator torque to 1.5e7. Need to change this to whatever the normal torque controller does.
+                ! LocalVar%LocalVar%PulseGenTq = AWC_TiltYaw(2)
 
             ELSE
                 ! Not used right now
                 AWC_TiltYaw(1) = 0.763
                 AWC_TiltYaw(2) = AWC_TiltYaw(1)
+                LocalVar%PulseGenTq = 0
             
             ENDIF
 
@@ -872,8 +874,8 @@ CONTAINS
             DebugVar%axisTilt_2P = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
                                             LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
             DebugVar%axisYaw_1P = 0.763-CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-            DebugVar%axisTilt_1P = AWC_TiltYaw(2)
-
+            DebugVar%axisTilt_1P = LocalVar%PulseGenTq
+            
         ENDIF
 
     END SUBROUTINE ActiveWakeControl
