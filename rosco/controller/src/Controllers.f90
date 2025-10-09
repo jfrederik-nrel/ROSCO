@@ -841,7 +841,7 @@ CONTAINS
                 Error(1) = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
                                                 LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) & ! This is the CT estimator using look-up table
                                                 !- 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
-                                + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R) ! This is the excitation as defined in the input
+                                + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R) ! This is the excitation as defined in the input
                 
                 ! Resonance controller similar to above
                 AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
@@ -849,23 +849,29 @@ CONTAINS
 
                 ! Implement open-loop blade pitch
                 DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
-                    AWC_angle(K) = D2R*CntrPar%AWC_amp(1)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
+                    AWC_angle(K) = D2R*CntrPar%AWC_amp(1)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) &
+                                        + (CntrPar%AWC_clockangle(1) + CntrPar%AWC_phaseoffset)*D2R)
                     LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
                 END DO
 
                 ! TODO: add optional width of compensator
                 ! TF: 1/(sqrt(a)) * (1+aTs) / (1+Ts). a = width^2, T = 1/(2*PI*sqrt(a)*CntrPar%AWC_freq(2))
                 ! width is now set at 10, input 3 is a, input 4 is T
-                LocalVar%PulseGenTq = LeadCompensator( AWC_TiltYaw(1), LocalVar%DT, 100.0, 1/(2*PI*10*CntrPar%AWC_freq(2)), LocalVar%FP, LocalVar%restart, objInst%instHPF, 0.0_DbKi)
+                AWC_TiltYaw(2) = AWC_TiltYaw(1) ! LeadCompensator( AWC_TiltYaw(1), LocalVar%DT, CntrPar%AWC_clockangle(1)**2, &
+                                    ! 1/(2*PI*CntrPar%AWC_clockangle(1)*CntrPar%AWC_freq(2)), LocalVar%FP, LocalVar%restart, objInst%instHPF, 0.0_DbKi)
 
                 ! ! At this point, I set the constant generator torque to 1.5e7. Need to change this to whatever the normal torque controller does.
-                ! LocalVar%LocalVar%PulseGenTq = AWC_TiltYaw(2)
+                LocalVar%PulseGenTq = AWC_TiltYaw(2)
 
             ELSE
                 ! Not used right now
                 AWC_TiltYaw(1) = 0.763
                 AWC_TiltYaw(2) = AWC_TiltYaw(1)
+                lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/(CntrPar%TiltMean/(LocalVar%n_DT+1))
                 LocalVar%PulseGenTq = 0
+                CntrPar%YawMean = CntrPar%YawMean*LocalVar%n_DT + interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                                            LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
+                CntrPar%YawMean = CntrPar%YawMean/(LocalVar%n_DT+1)
             
             ENDIF
 
@@ -873,7 +879,7 @@ CONTAINS
             DebugVar%axisYaw_2P = AWC_TiltYaw(1) !LocalVar%GenTq
             DebugVar%axisTilt_2P = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
                                             LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
-            DebugVar%axisYaw_1P = 0.763-CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            DebugVar%axisYaw_1P = CntrPar%YawMean - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
             DebugVar%axisTilt_1P = LocalVar%PulseGenTq
             
         ENDIF
