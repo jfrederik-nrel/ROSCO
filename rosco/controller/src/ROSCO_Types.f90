@@ -258,8 +258,10 @@ END TYPE piParams
 TYPE, PUBLIC :: resParams
     REAL(DbKi), DIMENSION(99)     :: res_OutputSignalLast1       ! Previous output signal term
     REAL(DbKi), DIMENSION(99)     :: res_OutputSignalLast2       ! Previous output signal term - second integrator
+    REAL(DbKi), DIMENSION(99)     :: res_OutputSignalLast3       ! Previous output signal term - third integrator
     REAL(DbKi), DIMENSION(99)     :: res_InputSignalLast1        ! Previous error signal term
     REAL(DbKi), DIMENSION(99)     :: res_InputSignalLast2        ! Previous error signal term - second integrator
+    REAL(DbKi), DIMENSION(99)     :: res_InputSignalLast3        ! Previous error signal term - third integrator
 END TYPE resParams
 
 TYPE, PUBLIC :: LocalVariables

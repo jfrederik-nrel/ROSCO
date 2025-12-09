@@ -132,7 +132,7 @@ CONTAINS
     END FUNCTION PIController
 
     !-------------------------------------------------------------------------------------------------------------------------------
-    REAL(DbKi) FUNCTION ResController(error, kp, ki, freq, minValue, maxValue, DT, resP, reset, inst)
+    REAL(DbKi) FUNCTION ResController(error, kp, ki, freq, minValue, maxValue, DT, I0, resP, reset, inst)
         USE ROSCO_Types, ONLY : resParams
 
     ! PI controller, with output saturation
@@ -146,6 +146,7 @@ CONTAINS
         REAL(DbKi),    INTENT(IN)         :: minValue
         REAL(DbKi),    INTENT(IN)         :: maxValue
         REAL(DbKi),    INTENT(IN)         :: DT
+        REAL(DbKi),    INTENT(IN)         :: I0
         INTEGER(IntKi), INTENT(INOUT)     :: inst
         TYPE(resParams), INTENT(INOUT)    :: resP
         LOGICAL,    INTENT(IN)            :: reset
@@ -164,10 +165,13 @@ CONTAINS
         a2 = b2*kp - 2*DT*ki
         ! Initialize persistent variables/arrays, and set initial condition for integrator term
         IF (reset) THEN
-            resP%res_OutputSignalLast1(inst)  = 0
-            resP%res_OutputSignalLast2(inst)  = 0
-            resP%res_InputSignalLast1(inst)   = 0
-            resP%res_InputSignalLast2(inst)   = 0
+            ResController = 1/b0*( -b1*I0 - b2*I0 &
+                                    + a0*error + a1*error + a2*error)
+            ResController = saturate(ResController, minValue, maxValue)
+            resP%res_OutputSignalLast1(inst)  = ResController
+            resP%res_OutputSignalLast2(inst)  = ResController
+            resP%res_InputSignalLast1(inst)   = error
+            resP%res_InputSignalLast2(inst)   = error
         ELSE
             ResController = 1/b0*( -b1*resP%res_OutputSignalLast1(inst) - b2*resP%res_OutputSignalLast2(inst) &
                                     + a0*error + a1*resP%res_InputSignalLast1(inst) + a2*resP%res_InputSignalLast2(inst))
@@ -182,6 +186,71 @@ CONTAINS
         inst = inst + 1
         
     END FUNCTION ResController
+
+    !-------------------------------------------------------------------------------------------------------------------------------
+    REAL(DbKi) FUNCTION IResController(error, kp, ki, kr, freq, minValue, maxValue, DT, I0, resP, reset, inst)
+        USE ROSCO_Types, ONLY : resParams
+
+    ! PI controller, with output saturation
+
+        IMPLICIT NONE
+        ! Allocate Inputs
+        REAL(DbKi),    INTENT(IN)         :: error
+        REAL(DbKi),    INTENT(IN)         :: kp
+        REAL(DbKi),    INTENT(IN)         :: ki
+        REAL(DbKi),    INTENT(IN)         :: kr
+        REAL(DbKi),    INTENT(IN)         :: freq
+        REAL(DbKi),    INTENT(IN)         :: minValue
+        REAL(DbKi),    INTENT(IN)         :: maxValue
+        REAL(DbKi),    INTENT(IN)         :: DT
+        REAL(DbKi),    INTENT(IN)         :: I0
+        INTEGER(IntKi), INTENT(INOUT)     :: inst
+        TYPE(resParams), INTENT(INOUT)    :: resP
+        LOGICAL,    INTENT(IN)            :: reset
+        ! Allocate local variables
+        REAL(DbKi)                        :: omega                                        ! Frequency
+        REAL(DbKi)                        :: a0, a1, a2, a3, b0, b1, b2, b3
+
+        omega = 2*PI*freq
+
+        !! Tustin RC
+        b0 = 8 + 2*omega**2*DT**2
+        b1 = -24 + 2*omega**2*DT**2
+        b2 = 24 - 2*omega**2*DT**2
+        b3 = -8 - 2*omega**2*DT**2
+
+        a0 = 8*kp + 4*ki*DT + 2*DT**2*(kr+kp*omega**2) + ki*omega**2*DT**3
+        a1 = -24*kp - 4*ki*DT + 2*DT**2*(kr+kp*omega**2) + 3*ki*omega**2*DT**3
+        a2 = 24*kp - 4*ki*DT - 2*DT**2*(kr+kp*omega**2) + 3*ki*omega**2*DT**3
+        a3 = -8*kp + 4*ki*DT - 2*DT**2*(kr+kp*omega**2) + ki*omega**2*DT**3
+        
+        ! Initialize persistent variables/arrays, and set initial condition for integrator term
+        IF (reset) THEN
+            IResController = 1/b0*( -b1*I0 - b2*I0 - b3*I0 &
+                                    + a0*error + a1*error + a2*error + a3*error)
+            IResController = saturate(IResController, minValue, maxValue)
+            resP%res_OutputSignalLast1(inst)  = IResController
+            resP%res_OutputSignalLast2(inst)  = IResController
+            resP%res_OutputSignalLast3(inst)  = IResController
+            resP%res_InputSignalLast1(inst)   = error
+            resP%res_InputSignalLast2(inst)   = error
+            resP%res_InputSignalLast3(inst)   = error
+        ELSE
+            IResController = 1/b0*( -b1*resP%res_OutputSignalLast1(inst) - b2*resP%res_OutputSignalLast2(inst) - b3*resP%res_OutputSignalLast3(inst) &
+                                    + a0*error + a1*resP%res_InputSignalLast1(inst) + a2*resP%res_InputSignalLast2(inst) + a3*resP%res_InputSignalLast3(inst))
+            IResController = saturate(IResController, minValue, maxValue)
+        
+            ! Save signals for next time step
+            resP%res_InputSignalLast3(inst)   = resP%res_InputSignalLast2(inst)
+            resP%res_InputSignalLast2(inst)   = resP%res_InputSignalLast1(inst)
+            resP%res_InputSignalLast1(inst)   = error
+            resP%res_OutputSignalLast3(inst)  = resP%res_OutputSignalLast2(inst)
+            resP%res_OutputSignalLast2(inst)  = resP%res_OutputSignalLast1(inst)
+            resP%res_OutputSignalLast1(inst)  = IResController
+        END IF
+        inst = inst + 1
+        
+    END FUNCTION IResController
 
 !-------------------------------------------------------------------------------------------------------------------------------
     REAL(DbKi) FUNCTION PIDController(error, kp, ki, kd, tf, minValue, maxValue, DT, I0, piP, reset, objInst, LocalVar)

@@ -218,7 +218,7 @@ CONTAINS
                 RETURN
             ENDIF
 
-            IF (CntrPar%WE_Mode > 0) THEN
+            IF ((CntrPar%WE_Mode > 0) .OR. (CntrPar%AWC_Mode > 5)) THEN
                 CALL READCpFile(CntrPar,PerfData,ErrVar)
             ENDIF
         

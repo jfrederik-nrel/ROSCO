@@ -204,7 +204,7 @@ CONTAINS
         TYPE(PerformanceData),      INTENT(INOUT)       :: PerfData
         TYPE(ErrorVariables),       INTENT(INOUT)       :: ErrVar
         REAL(DbKi)                 :: lambda                           ! Current TSR
-        REAL(DbKi)                 :: error
+        REAL(DbKi)                 :: filter1
 
         CHARACTER(*),               PARAMETER           :: RoutineName = 'VariableSpeedControl'
 
@@ -227,41 +227,62 @@ CONTAINS
             END IF
 
             IF (CntrPar%AWC_Mode > 5) THEN
-                lambda = LocalVar%RotSpeedF * CntrPar%WE_BladeRadius / LocalVar%WE%v_h                               
+                ! PI controller for regular speed control    
+                filter1 = NotchFilter(LocalVar%VS_SpdErr, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                                    LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%VS_SpdErr)
+                ! LocalVar%GenTq = PIController(filter1, &
+                !                             ! NotchFilter(filter1, LocalVar%DT, 4*PI*CntrPar%AWC_freq(1), 0.0, CntrPar%AWC_phaseoffset, &
+                !                             !         LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, filter1), &
+                !                             CntrPar%VS_KP(1), &
+                !                             CntrPar%VS_KI(1), &
+                !                             CntrPar%VS_MinTq, LocalVar%VS_MaxTq, &
+                !                             LocalVar%DT, LocalVar%VS_LastGenTrq, LocalVar%piP, LocalVar%restart, objInst%instPI)
+
+                ! PR controller for pulse control
+                IF (CntrPar%WE_Mode == 2) THEN
+                    lambda = LocalVar%RotSpeedF * CntrPar%WE_BladeRadius / &
+                                NotchFilter(LocalVar%WE%v_h, &
+                                        LocalVar%DT, 4*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                        LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h)
+                    ! DebugVar%axisYaw_2P = NotchFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                    !                             LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h)
+                ELSE
+                    lambda = LocalVar%RotSpeedF * CntrPar%WE_BladeRadius / &
+                                LPFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), &
+                                                    LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instLPF, LocalVar%WE%v_h)
+                    DebugVar%axisYaw_2P = LPFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), &
+                                                    LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instLPF, LocalVar%WE%v_h)
+                ENDIF
+
+                ! LocalVar%PulseGenTq = ResController(LocalVar%VS_SpdErr &
+                !     ! interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                !     !                             LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) & ! This is the CT estimator using look-up table
+                !                                 ! + 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
+                !                                 + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R), &
+                !                                 CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
+                !                                 -1e10, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
+                ! LocalVar%VS_RefSpd = (CntrPar%VS_TSRopt * LocalVar%We_Vw_F / CntrPar%WE_BladeRadius) * CntrPar%WE_GearboxRatio
+                filter1 = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                                                LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) &
+                                                    - 0.81 &
+                                                    + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
+                LocalVar%PulseGenTq = IResController(filter1, CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_phaseoffset, CntrPar%AWC_freq(1), & 
+                                                            -1e10, 1e10, LocalVar%DT, 0.0, LocalVar%resP, LocalVar%restart, objInst%instRes)
+                ! LocalVar%PulseGenTq = PIController(LocalVar%VS_SpdErr, CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), & ! Check plus or minus here
+                !                             -1e10, 1e10, LocalVar%DT, LocalVar%VS_LastGenTrq, LocalVar%piP, LocalVar%restart, objInst%instPI)
+
+                DebugVar%axisTilt_1P = LocalVar%PulseGenTq
+                LocalVar%PulseGenTq = LeadCompensator( LocalVar%PulseGenTq, LocalVar%DT, CntrPar%AWC_clockangle(1)**2, &
+                                    1/(2*PI*CntrPar%AWC_clockangle(1)*CntrPar%AWC_freq(2)), LocalVar%FP, LocalVar%restart, objInst%instHPF, 0.0_DbKi)
+
+                LocalVar%GenTq = saturate(LocalVar%PulseGenTq, CntrPar%VS_MinTq, LocalVar%VS_MaxTq)
 
                 
-                ! LocalVar%VS_SpdErr = NotchFilter(LocalVar%VS_SpdErr, LocalVar%DT, 4*PI*CntrPar%AWC_freq(1), 0.0, 10.0, &
-                !                                 LocalVar%FP,LocalVar%iStatus,LocalVar%restart, objInst%instNotch, 0.0)
-                ! Regular PI controller
-                LocalVar%GenTq = PIController( &
-                                            LocalVar%VS_SpdErr, &
-                                            CntrPar%VS_KP(1), &
-                                            CntrPar%VS_KI(1), &
-                                            CntrPar%VS_MinTq, LocalVar%VS_MaxTq, &
-                                            LocalVar%DT, LocalVar%VS_LastGenTrq, LocalVar%piP, LocalVar%restart, objInst%instPI)
-                LocalVar%GenTq = saturate(LocalVar%GenTq, CntrPar%VS_MinTq, LocalVar%VS_MaxTq)
-
-                ! Pulse PR controller
-                error = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
-                                                LocalVar%BlPitchCMeas*R2D, lambda, ErrVar) & ! Current CT estimate
-                                                    - interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
-                                                        0.0, CntrPar%VS_TSRopt, ErrVar) & ! Optimal CT
-                                                    + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
-                LocalVar%PulseGenTq = ResController(error, CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
-                                                            -1e10, 1e10, LocalVar%DT, 0.0, LocalVar%resP, LocalVar%restart, objInst%instRes)
-
-                DebugVar%axisTilt_1P = -CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
                 DebugVar%axisYaw_1P  = LocalVar%PulseGenTq
-                DebugVar%axisTilt_2P = NotchFilter(LocalVar%GenTq, LocalVar%DT, 4*PI*CntrPar%AWC_freq(1), 0.0, 10.0, &
-                                                LocalVar%FP,LocalVar%iStatus,LocalVar%restart, objInst%instNotch, LocalVar%VS_LastGenTrq)
-                DebugVar%axisYaw_2P = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
-                                                LocalVar%BlPitchCMeas*R2D, lambda, ErrVar) & ! Current CT estimate
-                                                    - interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
-                                                        0.0, CntrPar%VS_TSRopt, ErrVar)
-
-                LocalVar%GenTq = saturate(NotchFilter(LocalVar%GenTq, LocalVar%DT, 4*PI*CntrPar%AWC_freq(1), 0.0, 10.0, &
-                                                LocalVar%FP,LocalVar%iStatus,LocalVar%restart, objInst%instNotch, LocalVar%VS_LastGenTrq) + LocalVar%PulseGenTq, CntrPar%VS_MinTq, LocalVar%VS_MaxTq)    
-
+                DebugVar%axisTilt_2P = -CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
+                DebugVar%axisYaw_2P  = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                                                LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) - 0.81 !NotchFilter(filter1, LocalVar%DT, 4*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                                    ! LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, filter1)
             ELSE
                 ! PI controller
                 LocalVar%GenTq = PIController( &
@@ -877,7 +898,7 @@ CONTAINS
             ! Implement open-loop blade pitch
             DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
                 AWC_angle(K) = D2R*CntrPar%AWC_amp(1)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) &
-                                    + CntrPar%AWC_clockangle(1)*D2R)
+                                    + (CntrPar%AWC_clockangle(1) + CntrPar%AWC_phaseoffset)*D2R)
                 LocalVar%PitCom(K) = AWC_angle(K) ! LocalVar%PitCom(K) + 
             END DO
 

@@ -256,6 +256,7 @@ CONTAINS
         DebugVar%WE_t   = WE_Inp_Torque
 
         ! ---- Define wind speed estimate ---- 
+        LocalVar%WE%v_h = max(LocalVar%HorWindV, 3.0_DbKi) 
         
         ! Inversion and Invariance Filter implementation
         IF (CntrPar%WE_Mode == 1) THEN      
