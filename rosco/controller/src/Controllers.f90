@@ -59,7 +59,8 @@ CONTAINS
         
         ! Compute the collective pitch command associated with the proportional and integral gains:
         LocalVar%PC_PitComT = PIController(LocalVar%PC_SpdErr, LocalVar%PC_KP, LocalVar%PC_KI, LocalVar%PC_MinPit, LocalVar%PC_MaxPit, LocalVar%DT, LocalVar%BlPitch(1), LocalVar%piP, LocalVar%restart, objInst%instPI)
-        DebugVar%PC_PICommand = LocalVar%PC_PitComT
+        DebugVar%PC_PICommand = LocalVar%PC_PitComT            
+        
         ! Find individual pitch control contribution
         IF ((CntrPar%IPC_ControlMode >= 1) .OR. (CntrPar%Y_ControlMode == 2)) THEN
             CALL IPC(CntrPar, LocalVar, objInst, DebugVar, ErrVar)
@@ -105,7 +106,7 @@ CONTAINS
             LocalVar%PitCom(K) = LocalVar%PC_PitComT + LocalVar%FA_PitCom(K) 
             LocalVar%PitCom(K) = saturate(LocalVar%PitCom(K), LocalVar%PC_MinPit, CntrPar%PC_MaxPit)                    ! Saturate the command using the pitch saturation limits
             LocalVar%PitCom(K) = LocalVar%PitCom(K) + LocalVar%IPC_PitComF(K)                                          ! Add IPC
-            
+
             ! Hard IPC saturation by peak shaving limit
             IF (CntrPar%IPC_SatMode == 1) THEN
                 LocalVar%PitCom(K) = saturate(LocalVar%PitCom(K), LocalVar%PC_MinPit, CntrPar%PC_MaxPit)  
@@ -828,11 +829,16 @@ CONTAINS
         ! WIP pulse closed-loop
         ELSEIF (CntrPar%AWC_Mode == 6) THEN
 
+            ! DebugVar%axisYaw_2P = LocalVar%PitCom(1)
             ! Implement open-loop blade pitch
             DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
                 AWC_angle(K) = D2R*CntrPar%AWC_amp(1)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) &
                                     + (CntrPar%AWC_clockangle(1) + CntrPar%AWC_phaseoffset)*D2R)
-                LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
+                IF (LocalVar%VS_State < 4) THEN
+                    LocalVar%PitCom(K) = AWC_angle(K)
+                ELSE                           
+                    LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
+                END IF
             END DO
 
             ! TSR estimate. Now averages WS_e over full simulation
@@ -840,7 +846,7 @@ CONTAINS
             !lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/(CntrPar%TiltMean/(LocalVar%n_DT+1)) ! LocalVar%WE%v_h
             lambda = LocalVar%RotSpeedF * CntrPar%WE_BladeRadius / &
                         NotchFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
-                                            LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, 0.0_DbKi)
+                                            LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h)
 
             !CntrPar%TiltMean = CntrPar%TiltMean + LocalVar%WE%v_h
             ! Now it starts immediately. 
@@ -877,7 +883,7 @@ CONTAINS
             ENDIF
 
             ! Output debug signals
-            DebugVar%axisYaw_2P = AWC_TiltYaw(1) !LocalVar%GenTq
+            DebugVar%axisYaw_2P = LocalVar%GenTq
             DebugVar%axisTilt_2P = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
                                             LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
             DebugVar%axisYaw_1P = CntrPar%YawMean - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
