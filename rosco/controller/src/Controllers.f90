@@ -853,8 +853,7 @@ CONTAINS
             ! If we want to use the average WS over one full cycle, we might need to have it start after one full period
             IF (LocalVar%Time .GT. 0) THEN !1/CntrPar%AWC_freq(1)) THEN
 
-                Error(1) = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
-                                                LocalVar%BlPitchCMeas*R2D, lambda , ErrVar) & ! This is the CT estimator using look-up table
+                Error(1) = lambda & ! This is the CT estimator using look-up table
                                                 !- 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
                                 + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R) ! This is the excitation as defined in the input
                 
@@ -884,9 +883,9 @@ CONTAINS
 
             ! Output debug signals
             DebugVar%axisYaw_2P = LocalVar%GenTq
-            DebugVar%axisTilt_2P = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
-                                            LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
-            DebugVar%axisYaw_1P = CntrPar%YawMean - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
+            DebugVar%axisTilt_2P = lambda - CntrPar%VS_TSRopt !interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+                                    !        LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
+            DebugVar%axisYaw_1P = -CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
             DebugVar%axisTilt_1P = LocalVar%PulseGenTq
             
         ENDIF
