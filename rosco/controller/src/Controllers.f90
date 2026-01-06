@@ -883,9 +883,12 @@ CONTAINS
 
             ! Output debug signals
             DebugVar%axisYaw_2P = LocalVar%GenTq
-            DebugVar%axisTilt_2P = lambda - CntrPar%VS_TSRopt !interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
+            DebugVar%axisTilt_2P = lambda * NotchFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                            LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h) / CntrPar%WE_BladeRadius !interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, &
                                     !        LocalVar%BlPitchCMeas*R2D, lambda , ErrVar)
-            DebugVar%axisYaw_1P = -CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)
+            DebugVar%axisYaw_1P = (CntrPar%VS_TSRopt - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R)) * &
+                                            NotchFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                                LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h) / CntrPar%WE_BladeRadius
             DebugVar%axisTilt_1P = LocalVar%PulseGenTq
             
         ENDIF
