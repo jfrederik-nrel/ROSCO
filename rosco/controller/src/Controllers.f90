@@ -844,7 +844,7 @@ CONTAINS
             ! TSR estimate. Now averages WS_e over full simulation
             ! Possible improvement: use TUD estimator
             !lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/(CntrPar%TiltMean/(LocalVar%n_DT+1)) ! LocalVar%WE%v_h
-            lambda = LocalVar%RotSpeedF * CntrPar%WE_BladeRadius / &
+            lambda = LocalVar%GenSpeedF * CntrPar%WE_BladeRadius / &
                         NotchFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
                                             LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h)
 
