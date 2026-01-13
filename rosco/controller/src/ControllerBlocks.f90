@@ -147,7 +147,6 @@ CONTAINS
         ! Change VS Ref speed based on R_Speed
         LocalVar%VS_RefSpd = LocalVar%VS_RefSpd_TSR * LocalVar%PRC_R_Speed
 
-
         ! Filter reference signal
         LocalVar%VS_RefSpd = LPFilter(LocalVar%VS_RefSpd_TSR, LocalVar%DT, CntrPar%F_VSRefSpdCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF)
 
@@ -177,6 +176,11 @@ CONTAINS
 
         ! Compute speed error from reference
         LocalVar%VS_SpdErr = LocalVar%VS_RefSpd - LocalVar%GenSpeedF
+        
+        ! Active wake control speed error
+        IF (CntrPar%AWC_Mode == 6) THEN
+            LocalVar%VS_SpdErr = LocalVar%VS_SpdErr - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+        ENDIF
 
         ! Define transition region setpoint errors
         LocalVar%VS_SpdErrAr = LocalVar%VS_RefSpd - LocalVar%GenSpeedF               ! Current speed error - Region 2.5 PI-control (Above Rated)

@@ -873,6 +873,15 @@ CONTAINS
             DebugVar%axisTilt_2P = CntrPar%AWC_amp(1)*sin(StrAzimuth + CntrPar%AWC_clockangle(1)*D2R)
             DebugVar%axisYaw_2P = Error(1)
 
+        ELSEIF (CntrPar%AWC_Mode == 6) THEN
+
+            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
+                LocalVar%PitCom(K) = LocalVar%PitCom(K) + CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
+            END DO
+
+            DebugVar%axisTilt_2P = LocalVar%GenSpeedF
+            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            DebugVar%axisTilt_1P = LocalVar%VS_RefSpd
 
         ENDIF
 
