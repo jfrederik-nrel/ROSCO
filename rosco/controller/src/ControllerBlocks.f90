@@ -103,7 +103,7 @@ CONTAINS
             LocalVar%PRC_WSE_F = LPFilter(LocalVar%WE_Vw, LocalVar%DT,CntrPar%PRC_LPF_Freq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF) 
             LocalVar%PC_RefSpd_PRC = interp1d(CntrPar%PRC_WindSpeeds,CntrPar%PRC_GenSpeeds,LocalVar%PRC_WSE_F,ErrVar)
         ENDIF
-
+        
         ! Implement setpoint smoothing
         IF (LocalVar%SS_DelOmegaF < 0) THEN
             LocalVar%PC_RefSpd_SS = LocalVar%PC_RefSpd_PRC - LocalVar%SS_DelOmegaF
@@ -150,7 +150,6 @@ CONTAINS
         ! Filter reference signal
         LocalVar%VS_RefSpd = LPFilter(LocalVar%VS_RefSpd_TSR, LocalVar%DT, CntrPar%F_VSRefSpdCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF)
 
-
         ! Exclude reference speeds specified by user
         IF (CntrPar%TRA_Mode > 0) THEN
             CALL RefSpeedExclusion(LocalVar, CntrPar, objInst, DebugVar)
@@ -165,12 +164,12 @@ CONTAINS
         IF (CntrPar%PRC_Mode == 1) THEN
             LocalVar%VS_RefSpd = interp1d(CntrPar%PRC_WindSpeeds,CntrPar%PRC_GenSpeeds,LocalVar%PRC_WSE_F,ErrVar)
         ENDIF
-
+        
         ! Implement setpoint smoothing
         IF (LocalVar%SS_DelOmegaF > 0) THEN
             LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - LocalVar%SS_DelOmegaF
         ENDIF
-
+        
         ! Force minimum rotor speed
         LocalVar%VS_RefSpd = max(LocalVar%VS_RefSpd, CntrPar%VS_MinOmSpd)
 
@@ -179,7 +178,11 @@ CONTAINS
         
         ! Active wake control speed error
         IF (CntrPar%AWC_Mode == 6) THEN
+            ! Regular PI control (with periodic setpoint)
             LocalVar%VS_SpdErr = LocalVar%VS_SpdErr - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+        ELSEIF (CntrPar%AWC_Mode == 7) THEN
+            ! PI + PR control
+            LocalVar%VS_SpdErrAWC = LocalVar%GenSpeedF + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
         ENDIF
 
         ! Define transition region setpoint errors
@@ -509,8 +512,12 @@ CONTAINS
         ! ------ Setpoint Smoothing ------
         IF ( CntrPar%SS_Mode == 1) THEN
             ! Find setpoint shift amount
-            R_Total = LocalVar%PRC_R_Speed * LocalVar%PRC_R_Torque * LocalVar%PRC_R_Pitch
-            DelOmega = ((LocalVar%BlPitchCMeas - LocalVar%PC_MinPit)/0.524) * CntrPar%SS_VSGain - ((CntrPar%VS_RtPwr * R_Total - LocalVar%VS_LastGenPwr))/CntrPar%VS_RtPwr * CntrPar%SS_PCGain ! Normalize to 30 degrees for now
+            IF (CntrPar%PRC_Mode < 1) THEN
+                R_Total = 1.0
+            ELSE
+                R_Total = LocalVar%PRC_R_Speed * LocalVar%PRC_R_Torque * LocalVar%PRC_R_Pitch
+            ENDIF
+            DelOmega = ((LocalVar%PitCom(1) - LocalVar%PC_MinPit)/0.524) * CntrPar%SS_VSGain - ((CntrPar%VS_RtPwr * R_Total - LocalVar%VS_LastGenPwr))/CntrPar%VS_RtPwr * CntrPar%SS_PCGain ! Normalize to 30 degrees for now
             DelOmega = DelOmega * CntrPar%PC_RefSpd
             ! Filter
             LocalVar%SS_DelOmegaF = LPFilter(DelOmega, LocalVar%DT, CntrPar%F_SSCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF) 

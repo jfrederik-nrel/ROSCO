@@ -139,11 +139,6 @@ CONTAINS
             ENDIF
         ENDIF
 
-        ! Active wake control
-        IF (CntrPar%AWC_Mode > 0) THEN
-            CALL ActiveWakeControl(CntrPar, LocalVar, DebugVar, objInst)
-        ENDIF
-
         ! Shutdown
         IF (LocalVar%SD_Trigger == 0) THEN
             LocalVar%PitCom_SD = LocalVar%PitCom
@@ -159,6 +154,15 @@ CONTAINS
             ! Note that in some instances (like a downwind rotor), we may want to pitch to a stall angle.
         ENDIF
         
+        ! Active wake control
+        IF (CntrPar%AWC_Mode > 0) THEN
+            CALL ActiveWakeControl(CntrPar, LocalVar, DebugVar, objInst)
+            
+            ! Implement AWC angles
+            DO K = 1,LocalVar%NumBl
+                LocalVar%PitCom(K) = LocalVar%PitCom(K) + LocalVar%PitComAWC(K)
+            END DO
+        ENDIF
        
         ! Place pitch actuator here, so it can be used with or without open-loop
         DO K = 1,LocalVar%NumBl ! Loop through all blades, add IPC contribution and limit pitch rate
@@ -262,6 +266,17 @@ CONTAINS
                                         CntrPar%VS_KI(1), &
                                         CntrPar%VS_MinTq, LocalVar%VS_MaxTq, &
                                         LocalVar%DT, LocalVar%VS_LastGenTrq, LocalVar%piP, LocalVar%restart, objInst%instPI)
+
+            IF (CntrPar%AWC_Mode == 7) THEN
+                LocalVar%PulseGenTq = ResController( &
+                                        LocalVar%VS_SpdErrAWC, &
+                                        CntrPar%AWC_CntrGains(1), &
+                                        CntrPar%AWC_CntrGains(2), &
+                                        CntrPar%AWC_freq(1), & 
+                                        -1e10, 1e10, &
+                                        LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
+                LocalVar%GenTq = MAX(0.0_DbKi, LocalVar%GenTq + LocalVar%PulseGenTq)
+            ENDIF
 
             ! Saturate control input to Region 3 constant-power value if FBP mode is set to constant-power overspeed (no need for explicit transition region)
             IF (CntrPar%VS_FBP == VS_FBP_Power_Overspeed) THEN
@@ -728,7 +743,6 @@ CONTAINS
         REAL(DbKi), PARAMETER      :: phi1 = 0.0                       ! Phase difference from first to first blade
         REAL(DbKi), PARAMETER      :: phi2 = 2.0/3.0*PI                ! Phase difference from first to second blade
         REAL(DbKi), PARAMETER      :: phi3 = 4.0/3.0*PI                ! Phase difference from first to third blade
-        REAL(DbKi), DIMENSION(3)      :: AWC_angle
         COMPLEX(DbKi), DIMENSION(3)   :: AWC_complexangle
         COMPLEX(DbKi)              :: complexI = (0.0, 1.0)
         INTEGER(IntKi)             :: Imode, K                         ! Index used for looping through AWC modes, blades
@@ -750,18 +764,14 @@ CONTAINS
             DO Imode = 1,CntrPar%AWC_NumModes
                 clockang = CntrPar%AWC_clockangle(Imode)*PI/180.0_DbKi
                 omega = CntrPar%AWC_freq(Imode)*PI*2.0_DbKi
-                AWC_angle(1) = omega * LocalVar%Time - CntrPar%AWC_n(Imode) * (LocalVar%Azimuth + phi1 + clockang)
-                AWC_angle(2) = omega * LocalVar%Time - CntrPar%AWC_n(Imode) * (LocalVar%Azimuth + phi2 + clockang)
-                AWC_angle(3) = omega * LocalVar%Time - CntrPar%AWC_n(Imode) * (LocalVar%Azimuth + phi3 + clockang)
+                LocalVar%PitComAWC(1) = omega * LocalVar%Time - CntrPar%AWC_n(Imode) * (LocalVar%Azimuth + phi1 + clockang)
+                LocalVar%PitComAWC(2) = omega * LocalVar%Time - CntrPar%AWC_n(Imode) * (LocalVar%Azimuth + phi2 + clockang)
+                LocalVar%PitComAWC(3) = omega * LocalVar%Time - CntrPar%AWC_n(Imode) * (LocalVar%Azimuth + phi3 + clockang)
                 ! Add the forcing contribution to LocalVar%AWC_complexangle
                 amp = CntrPar%AWC_amp(Imode)*PI/180.0_DbKi
                 DO K = 1,LocalVar%NumBl ! Loop through all blades
-                    LocalVar%AWC_complexangle(K) = LocalVar%AWC_complexangle(K) + amp * EXP(complexI * (AWC_angle(K)))
+                    LocalVar%AWC_complexangle(K) = LocalVar%AWC_complexangle(K) + amp * EXP(complexI * (LocalVar%PitComAWC(K)))
                 END DO
-            END DO
-
-            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
-                LocalVar%PitCom(K) = LocalVar%PitCom(K) + REAL(LocalVar%AWC_complexangle(K))
             END DO
 
         ! Open-loop Coleman transform method
@@ -776,11 +786,7 @@ CONTAINS
                 ENDIF
                 
                 ! Inverse Coleman Transformation with phase offset
-                CALL ColemanTransformInverse(AWC_TiltYaw(1), AWC_TiltYaw(2), LocalVar%Azimuth, CntrPar%AWC_harmonic(Imode), CntrPar%AWC_phaseoffset*D2R, AWC_angle)
-            END DO
-
-            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
-                LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
+                CALL ColemanTransformInverse(AWC_TiltYaw(1), AWC_TiltYaw(2), LocalVar%Azimuth, CntrPar%AWC_harmonic(Imode), CntrPar%AWC_phaseoffset*D2R, LocalVar%PitComAWC)
             END DO
 
             ! DEBUG VARIABLES
@@ -821,13 +827,11 @@ CONTAINS
 
             ! Pass tilt and yaw axis through the inverse Coleman transform to get the commanded pitch angles
             CALL ColemanTransformInverse(AWC_TiltYaw(1), AWC_TiltYaw(2), &
-                                         LocalVar%Azimuth, CntrPar%AWC_harmonic(1), CntrPar%AWC_phaseoffset*D2R, AWC_angle)
+                                         LocalVar%Azimuth, CntrPar%AWC_harmonic(1), CntrPar%AWC_phaseoffset*D2R, LocalVar%PitComAWC)
             
-            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
+            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC angle
                 IF (CntrPar%AWC_harmonic(1) == 0) THEN
-                    LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_TiltYaw(1)
-                ELSE
-                    LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
+                    LocalVar%PitComAWC(K) = AWC_TiltYaw(1)
                 ENDIF
             END DO
 
@@ -861,11 +865,7 @@ CONTAINS
             ! Pass tilt and yaw axis through the inverse Strouhal + Coleman transform to get the commanded pitch angles
             CALL ColemanTransformInverse(sin(StrAzimuth + CntrPar%AWC_clockangle(1)*D2R)*AWC_TiltYaw(1), & ! Tilt signal (inverse Str transform)
                                             sin(StrAzimuth + CntrPar%AWC_clockangle(2)*D2R)*AWC_TiltYaw(1), & ! Yaw signal (inverse Str transform)
-                                            LocalVar%Azimuth, CntrPar%AWC_harmonic(1), CntrPar%AWC_phaseoffset*D2R, AWC_angle)
-
-            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
-                LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
-            END DO
+                                            LocalVar%Azimuth, CntrPar%AWC_harmonic(1), CntrPar%AWC_phaseoffset*D2R, LocalVar%PitComAWC)
 
             ! DEBUG VARIABLES
             DebugVar%axisTilt_1P = sin(StrAzimuth + CntrPar%AWC_clockangle(1)*D2R)*AWC_TiltYaw(1)
@@ -875,8 +875,19 @@ CONTAINS
 
         ELSEIF (CntrPar%AWC_Mode == 6) THEN
 
-            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
-                LocalVar%PitCom(K) = LocalVar%PitCom(K) + CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
+            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC angle
+                LocalVar%PitComAWC(K) = CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
+            END DO
+
+            DebugVar%axisTilt_1P = LocalVar%GenTq
+            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            DebugVar%axisTilt_2P = LocalVar%GenSpeedF
+            ! DebugVar%axisYaw_2P = LocalVar%PulseGenTq
+
+        ELSEIF (CntrPar%AWC_Mode == 7) THEN
+
+            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC angle
+                LocalVar%PitComAWC(K) = CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
             END DO
 
             DebugVar%axisTilt_2P = LocalVar%GenSpeedF

@@ -352,6 +352,7 @@ TYPE, PUBLIC :: LocalVariables
     REAL(DbKi)                    :: GenTqMeas                   ! Measured generator torque [Nm]
     REAL(DbKi)                    :: GenArTq                     ! Electrical generator torque, for above-rated PI-control [Nm].
     REAL(DbKi)                    :: GenBrTq                     ! Electrical generator torque, for below-rated PI-control [Nm].
+    REAL(DbKi)                    :: PulseGenTq                  ! Electrical generator torque for pulse AWC [Nm].
     REAL(DbKi)                    :: VS_KOmega2_GenTq            ! Calculation of torque signal used by K*Omega^2 controller
     REAL(DbKi)                    :: VS_ConstPwr_GenTq           ! Calculation of constant-power torque signal
     REAL(DbKi)                    :: IPC_PitComF(3)              ! Commanded pitch of each blade as calculated by the individual pitch controller, F stands for low-pass filtered [rad].
@@ -384,6 +385,7 @@ TYPE, PUBLIC :: LocalVariables
     REAL(DbKi)                    :: PitCom(3)                   ! Commanded pitch of each blade the last time the controller was called [rad].
     REAL(DbKi)                    :: PitCom_SD(3)                ! Commanded pitch of each blade due to shutdown [rad].
     REAL(DbKi)                    :: PitComAct(3)                ! Actuated pitch command of each blade [rad].
+    REAL(DbKi)                    :: PitComAWC(3)                ! AWC pitch of each blade the last time the controller was called [rad].
     REAL(DbKi)                    :: SS_DelOmegaF                ! Filtered setpoint shifting term defined in setpoint smoother [rad/s].
     REAL(DbKi)                    :: TestType                    ! Test variable, no use
     REAL(DbKi)                    :: Kp_Float                    ! Local, instantaneous Kp_Float, scheduled on wind speed, if desired
@@ -394,6 +396,7 @@ TYPE, PUBLIC :: LocalVariables
     REAL(DbKi)                    :: VS_SpdErrAr                 ! Current speed error for region 2.5 PI controller (generator torque control) [rad/s].
     REAL(DbKi)                    :: VS_SpdErrBr                 ! Current speed error for region 1.5 PI controller (generator torque control) [rad/s].
     REAL(DbKi)                    :: VS_SpdErr                   ! Current speed error for tip-speed-ratio tracking controller (generator torque control) [rad/s].
+    REAL(DbKi)                    :: VS_SpdErrAWC                ! Current speed error for tip-speed-ratio AWC tracking controller (generator torque control) [rad/s].   
     INTEGER(IntKi)                :: VS_State                    ! State of the torque control system
     REAL(DbKi)                    :: VS_Rgn3Pitch                ! Pitch angle at which the state machine switches to region 3, [rad].
     REAL(DbKi)                    :: WE_Vw                       ! Estimated wind speed [m/s]
