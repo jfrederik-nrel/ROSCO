@@ -147,8 +147,18 @@ CONTAINS
         ! Change VS Ref speed based on R_Speed
         LocalVar%VS_RefSpd = LocalVar%VS_RefSpd_TSR * LocalVar%PRC_R_Speed
 
+        ! Active wake control speed error
+        IF (CntrPar%AWC_Mode == 6) THEN
+            ! Regular PI control (with periodic setpoint)
+            LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+        ELSEIF (CntrPar%AWC_Mode == 7) THEN
+            ! PI + PR control
+            ! LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            LocalVar%VS_RefSpd_AWC = -CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+        ENDIF 
+
         ! Filter reference signal
-        LocalVar%VS_RefSpd = LPFilter(LocalVar%VS_RefSpd_TSR, LocalVar%DT, CntrPar%F_VSRefSpdCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF)
+        LocalVar%VS_RefSpd = LPFilter(LocalVar%VS_RefSpd, LocalVar%DT, CntrPar%F_VSRefSpdCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF)
 
         ! Exclude reference speeds specified by user
         IF (CntrPar%TRA_Mode > 0) THEN
@@ -169,24 +179,13 @@ CONTAINS
         IF (LocalVar%SS_DelOmegaF > 0) THEN
             LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - LocalVar%SS_DelOmegaF
         ENDIF
-        
-        ! DebugVar%VS_RefSpd = LocalVar%VS_RefSpd
-        
+     
         ! Force minimum rotor speed
         LocalVar%VS_RefSpd = max(LocalVar%VS_RefSpd, CntrPar%VS_MinOmSpd)
 
         ! Compute speed error from reference
         LocalVar%VS_SpdErr = LocalVar%VS_RefSpd - LocalVar%GenSpeedF
         
-        ! Active wake control speed error
-        IF (CntrPar%AWC_Mode == 6) THEN
-            ! Regular PI control (with periodic setpoint)
-            LocalVar%VS_SpdErr = LocalVar%VS_SpdErr - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-        ELSEIF (CntrPar%AWC_Mode == 7) THEN
-            ! PI + PR control
-            LocalVar%VS_SpdErrAWC = LocalVar%GenSpeedF + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-        ENDIF
-
         ! Define transition region setpoint errors
         LocalVar%VS_SpdErrAr = LocalVar%VS_RefSpd - LocalVar%GenSpeedF               ! Current speed error - Region 2.5 PI-control (Above Rated)
         LocalVar%VS_SpdErrBr = CntrPar%VS_MinOMSpd - LocalVar%GenSpeedF     ! Current speed error - Region 1.5 PI-control (Below Rated)
@@ -519,7 +518,11 @@ CONTAINS
             ELSE
                 R_Total = LocalVar%PRC_R_Speed * LocalVar%PRC_R_Torque * LocalVar%PRC_R_Pitch
             ENDIF
-            DelOmega = ((LocalVar%PC_PitComT - LocalVar%PC_MinPit)/0.524) * CntrPar%SS_VSGain - ((CntrPar%VS_RtPwr * R_Total - LocalVar%VS_LastGenPwr))/CntrPar%VS_RtPwr * CntrPar%SS_PCGain ! Normalize to 30 degrees for now
+            IF (CntrPar%AWC_Mode == 0) THEN
+                DelOmega = ((LocalVar%BlPitchCMeas - LocalVar%PC_MinPit)/0.524) * CntrPar%SS_VSGain - ((CntrPar%VS_RtPwr * R_Total - LocalVar%VS_LastGenPwr))/CntrPar%VS_RtPwr * CntrPar%SS_PCGain ! Normalize to 30 degrees for now
+            ELSE
+                DelOmega = ((LocalVar%PC_PitComT - LocalVar%PC_MinPit)/0.524) * CntrPar%SS_VSGain - ((CntrPar%VS_RtPwr * R_Total - LocalVar%VS_LastGenPwr))/CntrPar%VS_RtPwr * CntrPar%SS_PCGain ! Normalize to 30 degrees for now
+            END IF
             DelOmega = DelOmega * CntrPar%PC_RefSpd
             ! Filter
             LocalVar%SS_DelOmegaF = LPFilter(DelOmega, LocalVar%DT, CntrPar%F_SSCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF) 

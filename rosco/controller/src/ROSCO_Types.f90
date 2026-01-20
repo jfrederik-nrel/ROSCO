@@ -346,6 +346,7 @@ TYPE, PUBLIC :: LocalVariables
     REAL(DbKi)                    :: PC_RefSpd                   ! Generator speed set point of pitch controller [rad/s]
     REAL(DbKi)                    :: PC_RefSpd_SS                ! Generator speed set point of pitch controller after setpoint smoothing [rad/s]
     REAL(DbKi)                    :: PC_RefSpd_PRC               ! Generator speed set point of pitch controller after power ref control [rad/s]
+    REAL(DbKi)                    :: VS_RefSpd_AWC               ! Generator speed set point of pitch controller for active wake control [rad/s] 
     REAL(DbKi)                    :: RotSpeedF                   ! Filtered LSS (rotor) speed [rad/s].
     REAL(DbKi)                    :: GenSpeedF                   ! Filtered HSS (generator) speed [rad/s].
     REAL(DbKi)                    :: GenTq                       ! Electrical generator torque, [Nm].
@@ -396,7 +397,6 @@ TYPE, PUBLIC :: LocalVariables
     REAL(DbKi)                    :: VS_SpdErrAr                 ! Current speed error for region 2.5 PI controller (generator torque control) [rad/s].
     REAL(DbKi)                    :: VS_SpdErrBr                 ! Current speed error for region 1.5 PI controller (generator torque control) [rad/s].
     REAL(DbKi)                    :: VS_SpdErr                   ! Current speed error for tip-speed-ratio tracking controller (generator torque control) [rad/s].
-    REAL(DbKi)                    :: VS_SpdErrAWC                ! Current speed error for tip-speed-ratio AWC tracking controller (generator torque control) [rad/s].   
     INTEGER(IntKi)                :: VS_State                    ! State of the torque control system
     REAL(DbKi)                    :: VS_Rgn3Pitch                ! Pitch angle at which the state machine switches to region 3, [rad].
     REAL(DbKi)                    :: WE_Vw                       ! Estimated wind speed [m/s]
