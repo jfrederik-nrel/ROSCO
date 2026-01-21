@@ -276,6 +276,8 @@ CONTAINS
                                         -1e10, 1e10, &
                                         LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
                 LocalVar%GenTq = MAX(0.0_DbKi, LocalVar%GenTq + LocalVar%PulseGenTq)
+            ELSEIF (CntrPar%AWC_Mode == 7) THEN
+                
             ENDIF
 
             ! Saturate control input to Region 3 constant-power value if FBP mode is set to constant-power overspeed (no need for explicit transition region)
@@ -874,7 +876,7 @@ CONTAINS
             DebugVar%axisYaw_2P = Error(1)
 
         ! Pulse Open-loop pitch + PI torque control
-        ELSEIF (CntrPar%AWC_Mode == 6) THEN
+        ELSEIF (CntrPar%AWC_Mode > 5) THEN
 
             DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC angle
                 LocalVar%PitComAWC(K) = CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
@@ -883,21 +885,7 @@ CONTAINS
             DebugVar%axisTilt_1P = LocalVar%GenTq
             DebugVar%axisYaw_1P = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
             DebugVar%axisTilt_2P = LocalVar%GenSpeedF
-            ! DebugVar%axisYaw_2P = LocalVar%PulseGenTq
-
-        ! Pulse Open-loop pitch + PI+PR torque control
-        ELSEIF (CntrPar%AWC_Mode == 7) THEN
-
-            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC angle
-                LocalVar%PitComAWC(K) = CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
-            END DO
-
-            DebugVar%axisTilt_1P = LocalVar%GenTq
-            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd_AWC
-            DebugVar%axisTilt_2P = LocalVar%GenSpeedF
             DebugVar%axisYaw_2P = LocalVar%PulseGenTq
-
-        ENDIF
 
     END SUBROUTINE ActiveWakeControl
 
