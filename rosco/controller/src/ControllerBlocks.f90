@@ -151,11 +151,21 @@ CONTAINS
         IF (CntrPar%AWC_Mode == 6) THEN
             ! Regular PI control (with periodic setpoint)
             LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            LocalVar%VS_SpdErrAWC = LocalVar%VS_RefSpd - LocalVar%GenSpeedF
         ELSEIF (CntrPar%AWC_Mode == 7) THEN
             ! PI + PR control
+            ! LocalVar%VS_RefSpd_AWC = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
             ! LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-            LocalVar%VS_RefSpd_AWC = -CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            LocalVar%VS_RefSpd_AWC = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            LocalVar%VS_SpdErrAWC = LocalVar%VS_RefSpd_AWC - LocalVar%GenSpeedF
+        ELSEIF (CntrPar%AWC_Mode == 8) THEN
+            ! References PI torque + PR periodic CT control
+            LocalVar%VS_RefSpd_AWC = LocalVar%VS_RefSpd_AWC - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            !TODO still working? Add LocalVar%VS_RefSpd equal to AWC?
+            LocalVar%VS_SpdErrAWC = DebugVar%WE_Ct & 
+                            + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R) ! This is the excitation as defined in the input
         ENDIF 
+        !TODO: can we move this (or at least the Error part) to the end?
 
         ! Filter reference signal
         LocalVar%VS_RefSpd = LPFilter(LocalVar%VS_RefSpd, LocalVar%DT, CntrPar%F_VSRefSpdCornerFreq, LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instLPF)
@@ -422,6 +432,8 @@ CONTAINS
                 LocalVar%WE%P = RESHAPE((/0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 1.0/),(/3,3/))
                 LocalVar%WE%K = RESHAPE((/0.0,0.0,0.0/),(/3,1/))
                 Cp_op   = 0.25  ! initialize so debug output doesn't give *****
+                DebugVar%WE_Ct = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, WE_Inp_Pitch*R2D, lambda, ErrVar)
+                LocalVar%VS_RefSpd_AWC = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, WE_Inp_Pitch*R2D, CntrPar%VS_TSRopt, ErrVar)
                 
             ELSE
 
@@ -432,6 +444,11 @@ CONTAINS
                 lambda = max(WE_Inp_Speed, EPSILON(1.0_DbKi)) * CntrPar%WE_BladeRadius/LocalVar%WE%v_h
                 Cp_op = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Cp_mat, WE_Inp_Pitch*R2D, lambda , ErrVar)
                 Cp_op = max(0.0,Cp_op)
+
+                ! Interp2d for Ct estimating collective pitch plus torque active wake control
+                DebugVar%WE_Ct = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, WE_Inp_Pitch*R2D, lambda , ErrVar)
+                DebugVar%WE_Ct = max(0.0,DebugVar%WE_Ct)
+                LocalVar%VS_RefSpd_AWC = interp2d(PerfData%Beta_vec,PerfData%TSR_vec,PerfData%Ct_mat, CntrPar%PC_FinePit*R2D, CntrPar%VS_TSRopt, ErrVar)
                 
                 ! Update Jacobian
                 F(1,1) = A_op

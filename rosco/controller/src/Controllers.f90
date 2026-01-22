@@ -267,17 +267,15 @@ CONTAINS
                                         CntrPar%VS_MinTq, LocalVar%VS_MaxTq, &
                                         LocalVar%DT, LocalVar%VS_LastGenTrq, LocalVar%piP, LocalVar%restart, objInst%instPI)
 
-            IF (CntrPar%AWC_Mode == 7) THEN
+            ! Active wake pitch+torque control (PI+PR)
+            IF (CntrPar%AWC_Mode > 6) THEN
                 LocalVar%PulseGenTq = ResController( &
-                                        LocalVar%GenSpeedF - LocalVar%VS_RefSpd_AWC, &
+                                        LocalVar%VS_SpdErrAWC, &
                                         CntrPar%AWC_CntrGains(1), &
                                         CntrPar%AWC_CntrGains(2), &
                                         CntrPar%AWC_freq(1), & 
                                         -1e10, 1e10, &
                                         LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
-                LocalVar%GenTq = MAX(0.0_DbKi, LocalVar%GenTq + LocalVar%PulseGenTq)
-            ELSEIF (CntrPar%AWC_Mode == 7) THEN
-                
             ENDIF
 
             ! Saturate control input to Region 3 constant-power value if FBP mode is set to constant-power overspeed (no need for explicit transition region)
@@ -369,6 +367,9 @@ CONTAINS
 
         ! Reset the value of LocalVar%VS_LastGenTrq to the current values:
         LocalVar%VS_LastGenTrq = LocalVar%GenTq
+        IF (CntrPar%AWC_Mode > 6) THEN
+            LocalVar%VS_LastGenTrq = LocalVar%GenTq + LocalVar%PulseGenTq
+        END IF
         LocalVar%VS_LastGenPwr = LocalVar%VS_GenPwr
         
         ! Set the command generator torque (See Appendix A of Bladed User's Guide):
@@ -883,9 +884,15 @@ CONTAINS
             END DO
 
             DebugVar%axisTilt_1P = LocalVar%GenTq
-            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-            DebugVar%axisTilt_2P = LocalVar%GenSpeedF
+            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd_AWC
+            IF (CntrPar%AWC_Mode == 8) THEN
+                DebugVar%axisTilt_2P = DebugVar%WE_Ct
+            ELSE
+                DebugVar%axisTilt_2P = LocalVar%GenSpeedF
+            END IF
             DebugVar%axisYaw_2P = LocalVar%PulseGenTq
+        
+        ENDIF
 
     END SUBROUTINE ActiveWakeControl
 

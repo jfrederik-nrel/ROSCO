@@ -397,6 +397,7 @@ TYPE, PUBLIC :: LocalVariables
     REAL(DbKi)                    :: VS_SpdErrAr                 ! Current speed error for region 2.5 PI controller (generator torque control) [rad/s].
     REAL(DbKi)                    :: VS_SpdErrBr                 ! Current speed error for region 1.5 PI controller (generator torque control) [rad/s].
     REAL(DbKi)                    :: VS_SpdErr                   ! Current speed error for tip-speed-ratio tracking controller (generator torque control) [rad/s].
+    REAL(DbKi)                    :: VS_SpdErrAWC                ! Current speed error for AWC tracking controller (generator torque control) [rad/s].
     INTEGER(IntKi)                :: VS_State                    ! State of the torque control system
     REAL(DbKi)                    :: VS_Rgn3Pitch                ! Pitch angle at which the state machine switches to region 3, [rad].
     REAL(DbKi)                    :: WE_Vw                       ! Estimated wind speed [m/s]
@@ -498,6 +499,7 @@ END TYPE PerformanceData
 
 TYPE, PUBLIC :: DebugVariables
     REAL(DbKi)                    :: WE_Cp                       ! Cp that WSE uses to determine aerodynamic torque [-]
+    REAL(DbKi)                    :: WE_Ct                       ! Ct that AWC uses to determine aerodynamic thrust [-]
     REAL(DbKi)                    :: WE_b                        ! Pitch that WSE uses to determine aerodynamic torque [-]
     REAL(DbKi)                    :: WE_w                        ! Rotor Speed that WSE uses to determine aerodynamic torque [-]
     REAL(DbKi)                    :: WE_t                        ! Torque that WSE uses [-]
