@@ -156,8 +156,8 @@ CONTAINS
             ! PI + PR control
             ! LocalVar%VS_RefSpd_AWC = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
             ! LocalVar%VS_RefSpd = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-            LocalVar%VS_RefSpd_AWC = LocalVar%VS_RefSpd - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
-            LocalVar%VS_SpdErrAWC = LocalVar%VS_RefSpd_AWC - LocalVar%GenSpeedF
+            LocalVar%VS_RefSpd_AWC = CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)
+            LocalVar%VS_SpdErrAWC = LocalVar%VS_RefSpd_AWC + LocalVar%GenSpeedF
         ELSEIF (CntrPar%AWC_Mode == 8) THEN
             ! References PI torque + PR periodic CT control
             LocalVar%VS_RefSpd_AWC = LocalVar%VS_RefSpd_AWC - CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(2)*D2R)

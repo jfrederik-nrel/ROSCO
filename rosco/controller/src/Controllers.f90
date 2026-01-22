@@ -883,14 +883,14 @@ CONTAINS
                 LocalVar%PitComAWC(K) = CntrPar%AWC_amp(1)*D2R*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) + CntrPar%AWC_clockangle(1)*D2R)
             END DO
 
-            DebugVar%axisTilt_1P = LocalVar%GenTq
+            DebugVar%axisTilt_1P = LocalVar%PulseGenTq
             DebugVar%axisYaw_1P = LocalVar%VS_RefSpd_AWC
             IF (CntrPar%AWC_Mode == 8) THEN
                 DebugVar%axisTilt_2P = DebugVar%WE_Ct
             ELSE
                 DebugVar%axisTilt_2P = LocalVar%GenSpeedF
             END IF
-            DebugVar%axisYaw_2P = LocalVar%PulseGenTq
+            DebugVar%axisYaw_2P = LocalVar%GenTq
         
         ENDIF
 
