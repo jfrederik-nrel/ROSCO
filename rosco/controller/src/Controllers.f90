@@ -884,7 +884,7 @@ CONTAINS
             END DO
 
             DebugVar%axisTilt_1P = LocalVar%PulseGenTq
-            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd_AWC
+            DebugVar%axisYaw_1P = LocalVar%VS_RefSpd - LocalVar%VS_RefSpd_AWC
             IF (CntrPar%AWC_Mode == 8) THEN
                 DebugVar%axisTilt_2P = DebugVar%WE_Ct
             ELSE
