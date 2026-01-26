@@ -897,18 +897,16 @@ CONTAINS
             !CntrPar%TiltMean = CntrPar%TiltMean + LocalVar%WE%v_h
             ! Now it starts immediately. 
             ! If we want to use the average WS over one full cycle, we might need to have it start after one full period
-            IF (LocalVar%Time .GT. 0) THEN !1/CntrPar%AWC_freq(1)) THEN
 
-                Error(1) = LocalVar%GenSpeedF & !lambda & ! This is the CT estimator using look-up table
-                                                !- 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
-                                + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R) ! This is the excitation as defined in the input
-                
-                ! Resonance controller similar to above
-                AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
-                                                                -1e10, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
+            Error(1) = LocalVar%GenSpeedF & !lambda & ! This is the CT estimator using look-up table
+                                            !- 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
+                            + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R) ! This is the excitation as defined in the input
+            
+            ! Resonance controller similar to above
+            AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
+                                                            -1e10, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
 
-                LocalVar%GenTq = LocalVar%GenTq + AWC_TiltYaw(1)
-
+            avrSWAP(47) = MAX(0.0_DbKi, LocalVar%VS_LastGenTrq + AWC_TiltYaw(1))
 
         ENDIF
 
