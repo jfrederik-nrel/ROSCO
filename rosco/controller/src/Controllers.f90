@@ -873,6 +873,42 @@ CONTAINS
             DebugVar%axisTilt_2P = CntrPar%AWC_amp(1)*sin(StrAzimuth + CntrPar%AWC_clockangle(1)*D2R)
             DebugVar%axisYaw_2P = Error(1)
 
+        ELSEIF (CntrPar%AWC_Mode == 7) THEN
+
+            ! DebugVar%axisYaw_2P = LocalVar%PitCom(1)
+            ! Implement open-loop blade pitch
+            DO K = 1,LocalVar%NumBl ! Loop through all blades, apply AWC_angle
+                AWC_angle(K) = D2R*CntrPar%AWC_amp(1)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(1) &
+                                    + (CntrPar%AWC_clockangle(1) + CntrPar%AWC_phaseoffset)*D2R)
+                IF (LocalVar%VS_State < 4) THEN
+                    LocalVar%PitCom(K) = AWC_angle(K)
+                ELSE                           
+                    LocalVar%PitCom(K) = LocalVar%PitCom(K) + AWC_angle(K)
+                END IF
+            END DO
+
+            ! TSR estimate. Now averages WS_e over full simulation
+            ! Possible improvement: use TUD estimator
+            !lambda =  LocalVar%RotSpeedF * CntrPar%WE_BladeRadius/(CntrPar%TiltMean/(LocalVar%n_DT+1)) ! LocalVar%WE%v_h
+            lambda = LocalVar%GenSpeedF * CntrPar%WE_BladeRadius / &
+                        NotchFilter(LocalVar%WE%v_h, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                            LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%WE%v_h)
+
+            !CntrPar%TiltMean = CntrPar%TiltMean + LocalVar%WE%v_h
+            ! Now it starts immediately. 
+            ! If we want to use the average WS over one full cycle, we might need to have it start after one full period
+            IF (LocalVar%Time .GT. 0) THEN !1/CntrPar%AWC_freq(1)) THEN
+
+                Error(1) = LocalVar%GenSpeedF & !lambda & ! This is the CT estimator using look-up table
+                                                !- 0.763 & ! This is my mean CT estimate. Perhaps this can be removed altogether?
+                                + CntrPar%AWC_amp(2)*sin(LocalVar%Time*2*PI*CntrPar%AWC_freq(2) + CntrPar%AWC_clockangle(1)*D2R) ! This is the excitation as defined in the input
+                
+                ! Resonance controller similar to above
+                AWC_TiltYaw(1) = ResController(Error(1), CntrPar%AWC_CntrGains(1), CntrPar%AWC_CntrGains(2), CntrPar%AWC_freq(1), & 
+                                                                -1e10, 1e10, LocalVar%DT, LocalVar%resP, LocalVar%restart, objInst%instRes)
+
+                LocalVar%GenTq = LocalVar%GenTq + AWC_TiltYaw(1)
+
 
         ENDIF
 
