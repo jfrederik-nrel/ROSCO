@@ -115,13 +115,9 @@ IF (((LocalVar%iStatus >= 0) .OR. (LocalVar%iStatus <= -8)) .AND. (ErrVar%aviFAI
     CALL StateMachine(CntrPar, LocalVar)
     CALL SetpointSmoother(LocalVar, CntrPar, objInst)
     CALL VariableSpeedControl(avrSWAP, CntrPar, LocalVar, objInst, ErrVar)
-<<<<<<< HEAD
     IF (CntrPar%PC_ControlMode > 0) THEN
-        CALL PitchControl(avrSWAP, CntrPar, LocalVar, objInst, DebugVar, ErrVar)
+        CALL PitchControl(avrSWAP, CntrPar, LocalVar, objInst, DebugVar, ErrVar, PerfData)
     END IF
-=======
-    CALL PitchControl(avrSWAP, CntrPar, LocalVar, objInst, DebugVar, ErrVar, PerfData)
->>>>>>> awc_cl_tsr
     
     IF (CntrPar%Y_ControlMode > 0) THEN
         CALL YawRateControl(avrSWAP, CntrPar, LocalVar, objInst, DebugVar, ErrVar)
