@@ -225,9 +225,6 @@ from rosco.toolbox.ofTools.case_gen import CaseLibrary as cl
 from rosco.toolbox.utilities import read_DISCON #, DISCON_dict
 # import numpy as np
 
-
-FULL_TEST = False
-
 def main():
     # Choose your implementation method
     AWC_Mode 			= 1 		# 1 for SNL implementation, 2 for Coleman Transformation implementation

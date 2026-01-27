@@ -1584,6 +1584,9 @@ LocalVariables:
     YawMean:
       <<: *real
       description: Mean yaw blade moment [Nm]
+    PulseGenTq:
+      <<: *real
+      description: CL Pulse GenTq command [Nm]
     ZMQ_ID:
       <<: *integer
       description: 0000 - 9999, Identifier of the rosco, used for zeromq interface only

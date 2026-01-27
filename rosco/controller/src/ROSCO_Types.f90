@@ -196,6 +196,7 @@ TYPE, PUBLIC :: ControlParameters
     REAL(DbKi)                    :: PA_Damping                  ! Pitch actuator damping ratio [-, unused if PA_Mode = 1]
     INTEGER(IntKi)                :: AWC_Mode                    ! Active wake control mode [0 - unused, 1 - complex number method, 2 - Coleman transform method]
     INTEGER(IntKi)                :: AWC_NumModes                ! AWC- Number of modes to include [-]
+<<<<<<< HEAD
     INTEGER(IntKi), DIMENSION(:), ALLOCATABLE     :: AWC_n                       ! AWC azimuthal mode [-]
     INTEGER(IntKi), DIMENSION(:), ALLOCATABLE     :: AWC_harmonic                ! AWC Coleman transform harmonic [-]
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_freq                    ! AWC frequency [Hz]
@@ -203,6 +204,15 @@ TYPE, PUBLIC :: ControlParameters
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_clockangle              ! AWC clocking angle [deg]
     REAL(DbKi)                    :: AWC_phaseoffset             ! AWC azimuth offset for Coleman transform [deg]
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_CntrGains               ! AWC KP and KI/KR gain of the controller [-]
+=======
+    REAL(DbKi)                    :: AWC_phaseoffset             ! Phase offset for Coleman transformation in AWC [deg]
+    INTEGER(IntKi), DIMENSION(:), ALLOCATABLE :: AWC_n           ! AWC azimuthal mode [-]
+    INTEGER(IntKi), DIMENSION(:), ALLOCATABLE :: AWC_harmonic    ! AWC AWC Coleman transform harmonic [-]
+    REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_freq        ! AWC frequency [Hz]
+    REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_amp         ! AWC amplitude [deg]
+    REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_clockangle  ! AWC clocking angle [deg]
+    REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: AWC_CntrGains   ! Control gains (P, I/R) for closed-loop AWC
+>>>>>>> awc_cl_tsr
     INTEGER(IntKi)                :: PF_Mode                     ! Pitch actuator fault mode {0 - not used, 1 - offsets on one or more blades}
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: PF_Offsets                  ! Pitch actuator fault offsets for blade 1-3 [rad/s]
     REAL(DbKi), DIMENSION(:), ALLOCATABLE     :: PF_TimeStuck                ! Time for pitch actuator fault to be stuck for blade 1-3 [s]
@@ -210,10 +220,10 @@ TYPE, PUBLIC :: ControlParameters
     CHARACTER(1024)               :: DLL_FileName                ! File name of external dynamic library
     CHARACTER(1024)               :: DLL_InFile                  ! Name of input file called by dynamic library (DISCON.IN, e.g.)
     CHARACTER(1024)               :: DLL_ProcName                ! Process name of subprocess called in DLL_Filename (Usually DISCON)
-    INTEGER(IntKi)                :: ZMQ_Mode                    ! Flag for ZeroMQ (0-off, 1-yaw}
+    INTEGER(IntKi)                :: ZMQ_Mode                    ! Flag for ZeroMQ (0-off, 1-yaw)
     CHARACTER(256)                :: ZMQ_CommAddress             ! Comm Address to zeroMQ client
     REAL(DbKi)                    :: ZMQ_UpdatePeriod            ! Integer for zeromq update frequency
-    INTEGER(IntKi)                :: CC_Mode                     ! Flag for ZeroMQ (0-off, 1-yaw}
+    INTEGER(IntKi)                :: CC_Mode                     ! Flag for ZeroMQ (0-off, 1-yaw)
     INTEGER(IntKi)                :: CC_Group_N                  ! Number of cable control groups
     REAL(DbKi)                    :: CC_ActTau                   ! Time constant for line actuator [s]
     INTEGER(IntKi), DIMENSION(:), ALLOCATABLE     :: CC_GroupIndex               ! Cable control group indices
@@ -223,6 +233,8 @@ TYPE, PUBLIC :: ControlParameters
     REAL(DbKi)                    :: PC_RtTq99                   ! 99% of the rated torque value, using for switching between pitch and torque control, [Nm].
     REAL(DbKi)                    :: VS_MaxOMTq                  ! Maximum torque at the end of the below-rated region 2, [Nm]
     REAL(DbKi)                    :: VS_MinOMTq                  ! Minimum torque at the beginning of the below-rated region 2, [Nm]
+    REAL(DbKi)                    :: TiltMean = 0                ! Mean blade moment for tilt AWC
+    REAL(DbKi)                    :: YawMean = 0                 ! Mean blade moment for yaw AWC
 END TYPE ControlParameters
 
 TYPE, PUBLIC :: WE
@@ -236,6 +248,7 @@ TYPE, PUBLIC :: WE
 END TYPE WE
 
 TYPE, PUBLIC :: FilterParameters
+<<<<<<< HEAD
     REAL(DbKi), DIMENSION(1024)     :: lpf1_a1                     ! First order filter - Denominator coefficient 1
     REAL(DbKi), DIMENSION(1024)     :: lpf1_a0                     ! First order filter - Denominator coefficient 0
     REAL(DbKi), DIMENSION(1024)     :: lpf1_b1                     ! First order filter - Numerator coefficient 1
@@ -282,6 +295,56 @@ TYPE, PUBLIC :: FilterParameters
     REAL(DbKi), DIMENSION(1024)     :: nf_b0                       ! Notch filter numerator coefficient 0
     REAL(DbKi), DIMENSION(1024)     :: nf_a1                       ! Notch filter denominator coefficient 1
     REAL(DbKi), DIMENSION(1024)     :: nf_a0                       ! Notch filter denominator coefficient 0
+=======
+    REAL(DbKi), DIMENSION(99)     :: lpf1_a1                     ! First order filter - Denominator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpf1_a0                     ! First order filter - Denominator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: lpf1_b1                     ! First order filter - Numerator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpf1_b0                     ! First order filter - Numerator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: lpf1_InputSignalLast        ! First order filter - Previous input
+    REAL(DbKi), DIMENSION(99)     :: lpf1_OutputSignalLast       ! First order filter - Previous output
+    REAL(DbKi), DIMENSION(99)     :: lpf2_a2                     ! Second order filter - Denominator coefficient 2
+    REAL(DbKi), DIMENSION(99)     :: lpf2_a1                     ! Second order filter - Denominator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpf2_a0                     ! Second order filter - Denominator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: lpf2_b2                     ! Second order filter - Numerator coefficient 2
+    REAL(DbKi), DIMENSION(99)     :: lpf2_b1                     ! Second order filter - Numerator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpf2_b0                     ! Second order filter - Numerator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: lpf2_InputSignalLast2       ! Second order filter - Previous input 2
+    REAL(DbKi), DIMENSION(99)     :: lpf2_OutputSignalLast2      ! Second order filter - Previous output 2
+    REAL(DbKi), DIMENSION(99)     :: lpf2_InputSignalLast1       ! Second order filter - Previous input 1
+    REAL(DbKi), DIMENSION(99)     :: lpf2_OutputSignalLast1      ! Second order filter - Previous output 1
+    REAL(DbKi), DIMENSION(99)     :: lpfV_a2                     ! Second order filter - Denominator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpfV_a1                     ! Second order filter - Denominator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpfV_a0                     ! Second order filter - Denominator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: lpfV_b2                     ! Second order filter - Numerator coefficient 2
+    REAL(DbKi), DIMENSION(99)     :: lpfV_b1                     ! Second order filter - Numerator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: lpfV_b0                     ! Second order filter - Numerator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: lpfV_InputSignalLast2       ! Second order filter - Previous input 2
+    REAL(DbKi), DIMENSION(99)     :: lpfV_OutputSignalLast2      ! Second order filter - Previous output 2
+    REAL(DbKi), DIMENSION(99)     :: lpfV_InputSignalLast1       ! Second order filter - Previous input 1
+    REAL(DbKi), DIMENSION(99)     :: lpfV_OutputSignalLast1      ! Second order filter - Previous output 1
+    REAL(DbKi), DIMENSION(99)     :: hpf_InputSignalLast         ! High pass filter - Previous output 1
+    REAL(DbKi), DIMENSION(99)     :: hpf_OutputSignalLast        ! High pass filter - Previous output 1
+    REAL(DbKi), DIMENSION(99)     :: nfs_OutputSignalLast1       ! Notch filter slopes previous output 1
+    REAL(DbKi), DIMENSION(99)     :: nfs_OutputSignalLast2       ! Notch filter slopes previous output 2
+    REAL(DbKi), DIMENSION(99)     :: nfs_InputSignalLast1        ! Notch filter slopes previous input 1
+    REAL(DbKi), DIMENSION(99)     :: nfs_InputSignalLast2        ! Notch filter slopes previous input 1
+    REAL(DbKi), DIMENSION(99)     :: nfs_b2                      ! Notch filter slopes numerator coefficient 2
+    REAL(DbKi), DIMENSION(99)     :: nfs_b0                      ! Notch filter slopes numerator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: nfs_a2                      ! Notch filter slopes denominator coefficient 2
+    REAL(DbKi), DIMENSION(99)     :: nfs_a1                      ! Notch filter slopes denominator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: nfs_a0                      ! Notch filter slopes denominator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: nf_OutputSignalLast1        ! Notch filter previous output 1
+    REAL(DbKi), DIMENSION(99)     :: nf_OutputSignalLast2        ! Notch filter previous output 2
+    REAL(DbKi), DIMENSION(99)     :: nf_OutputSignalLast3        ! Notch filter previous output 3
+    REAL(DbKi), DIMENSION(99)     :: nf_InputSignalLast1         ! Notch filter previous input 1
+    REAL(DbKi), DIMENSION(99)     :: nf_InputSignalLast2         ! Notch filter previous input 2
+    REAL(DbKi), DIMENSION(99)     :: nf_InputSignalLast3         ! Notch filter previous input 3
+    REAL(DbKi), DIMENSION(99)     :: nf_b2                       ! Notch filter numerator coefficient 2
+    REAL(DbKi), DIMENSION(99)     :: nf_b1                       ! Notch filter numerator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: nf_b0                       ! Notch filter numerator coefficient 0
+    REAL(DbKi), DIMENSION(99)     :: nf_a1                       ! Notch filter denominator coefficient 1
+    REAL(DbKi), DIMENSION(99)     :: nf_a0                       ! Notch filter denominator coefficient 0
+>>>>>>> awc_cl_tsr
 END TYPE FilterParameters
 
 TYPE, PUBLIC :: rlParams
@@ -289,18 +352,21 @@ TYPE, PUBLIC :: rlParams
 END TYPE rlParams
 
 TYPE, PUBLIC :: piParams
-    REAL(DbKi), DIMENSION(1024)     :: ITerm                       ! Integrator term
-    REAL(DbKi), DIMENSION(1024)     :: ITermLast                   ! Previous integrator term
-    REAL(DbKi), DIMENSION(1024)     :: ITerm2                      ! Integrator term - second integrator
-    REAL(DbKi), DIMENSION(1024)     :: ITermLast2                  ! Previous integrator term - second integrator
-    REAL(DbKi), DIMENSION(1024)     :: ELast                       ! Previous error term for derivative
+    REAL(DbKi), DIMENSION(99)     :: ITerm                       ! Integrator term
+    REAL(DbKi), DIMENSION(99)     :: ITermLast                   ! Previous integrator term
+    REAL(DbKi), DIMENSION(99)     :: ITerm2                      ! Integrator term - second integrator
+    REAL(DbKi), DIMENSION(99)     :: ITermLast2                  ! Previous integrator term - second integrator
+    REAL(DbKi), DIMENSION(99)     :: ITermLast3                  ! Previous integrator term - third integrator
+    REAL(DbKi), DIMENSION(99)     :: ELast                       ! Previous error term for derivative
+    REAL(DbKi), DIMENSION(99)     :: ELast2                      ! Previous error term for derivative - second integrator
+    REAL(DbKi), DIMENSION(99)     :: ELast3                      ! Previous error term for derivative - third integrator
 END TYPE piParams
 
 TYPE, PUBLIC :: resParams
-    REAL(DbKi), DIMENSION(1024)     :: res_OutputSignalLast1       ! Previous output signal
-    REAL(DbKi), DIMENSION(1024)     :: res_OutputSignalLast2       ! Previous output signal - second integrator
-    REAL(DbKi), DIMENSION(1024)     :: res_InputSignalLast1        ! Previous input signal
-    REAL(DbKi), DIMENSION(1024)     :: res_InputSignalLast2        ! Previous input signal - second integrator
+    REAL(DbKi), DIMENSION(99)     :: res_OutputSignalLast1       ! Previous output signal term
+    REAL(DbKi), DIMENSION(99)     :: res_OutputSignalLast2       ! Previous output signal term - second integrator
+    REAL(DbKi), DIMENSION(99)     :: res_InputSignalLast1        ! Previous error signal term
+    REAL(DbKi), DIMENSION(99)     :: res_InputSignalLast2        ! Previous error signal term - second integrator
 END TYPE resParams
 
 TYPE, PUBLIC :: LocalVariables
@@ -457,8 +523,12 @@ TYPE, PUBLIC :: LocalVariables
     CHARACTER, DIMENSION(:), ALLOCATABLE     :: ACC_INFILE                  ! Parameter input filename
     LOGICAL                       :: restart                     ! Restart flag
     COMPLEX(DbKi)                 :: AWC_complexangle(3)         ! Complex angle for each blade, sum of modes?
+<<<<<<< HEAD
     REAL(DbKi)                    :: TiltMean                    ! Mean tilt blade moment [Nm]
     REAL(DbKi)                    :: YawMean                     ! Mean yaw blade moment [Nm]
+=======
+    REAL(DbKi)                    :: PulseGenTq                  ! CL Pulse GenTq command, [Nm]
+>>>>>>> awc_cl_tsr
     INTEGER(IntKi)                :: ZMQ_ID                      ! 0000 - 9999, Identifier of the rosco, used for zeromq interface only
     REAL(DbKi)                    :: ZMQ_YawOffset               ! Yaw offset command, [rad]
     REAL(DbKi)                    :: ZMQ_TorqueOffset            ! Torque offset command, [Nm]
@@ -481,7 +551,11 @@ TYPE, PUBLIC :: ObjectInstances
     INTEGER(IntKi)                :: instNotchSlopes             ! Notch filter slopes instance
     INTEGER(IntKi)                :: instNotch                   ! Notch filter instance
     INTEGER(IntKi)                :: instPI                      ! PI controller instance
+<<<<<<< HEAD
     INTEGER(IntKi)                :: instRes                     ! PR controller instance
+=======
+    INTEGER(IntKi)                :: instRes                      ! PR controller instance
+>>>>>>> awc_cl_tsr
     INTEGER(IntKi)                :: instRL                      ! Rate limiter instance
 END TYPE ObjectInstances
 

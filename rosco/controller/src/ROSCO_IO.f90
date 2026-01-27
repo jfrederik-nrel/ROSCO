@@ -262,6 +262,7 @@ SUBROUTINE WriteRestartFile(LocalVar, CntrPar, ErrVar, objInst, RootName, size_a
         WRITE( Un, IOSTAT=ErrStat) LocalVar%AWC_complexangle(3)
         WRITE( Un, IOSTAT=ErrStat) LocalVar%TiltMean
         WRITE( Un, IOSTAT=ErrStat) LocalVar%YawMean
+        WRITE( Un, IOSTAT=ErrStat) LocalVar%PulseGenTq
         WRITE( Un, IOSTAT=ErrStat) LocalVar%ZMQ_ID
         WRITE( Un, IOSTAT=ErrStat) LocalVar%ZMQ_YawOffset
         WRITE( Un, IOSTAT=ErrStat) LocalVar%ZMQ_TorqueOffset
@@ -606,6 +607,7 @@ SUBROUTINE ReadRestartFile(avrSWAP, LocalVar, CntrPar, objInst, PerfData, RootNa
         READ( Un, IOSTAT=ErrStat) LocalVar%AWC_complexangle(3)
         READ( Un, IOSTAT=ErrStat) LocalVar%TiltMean
         READ( Un, IOSTAT=ErrStat) LocalVar%YawMean
+        READ( Un, IOSTAT=ErrStat) LocalVar%PulseGenTq
         READ( Un, IOSTAT=ErrStat) LocalVar%ZMQ_ID
         READ( Un, IOSTAT=ErrStat) LocalVar%ZMQ_YawOffset
         READ( Un, IOSTAT=ErrStat) LocalVar%ZMQ_TorqueOffset
