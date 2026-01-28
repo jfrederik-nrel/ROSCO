@@ -373,7 +373,11 @@ CONTAINS
         LocalVar%VS_LastGenPwr = LocalVar%VS_GenPwr
         
         ! Set the command generator torque (See Appendix A of Bladed User's Guide):
-        avrSWAP(47) = MAX(0.0_DbKi, LocalVar%VS_LastGenTrq)  ! Demanded generator torque, prevent negatives.
+        IF (CntrPar%AWC_Mode < 6) THEN
+            avrSWAP(47) = MAX(0.0_DbKi, LocalVar%VS_LastGenTrq)  ! Demanded generator torque, prevent negatives.
+        ELSE
+            avrSWAP(47) = MAX(0.0_DbKi, LocalVar%VS_LastGenTrq + LocalVar%PulseGenTq)
+        ENDIF
 
         ! Add RoutineName to error message
         IF (ErrVar%aviFAIL < 0) THEN
