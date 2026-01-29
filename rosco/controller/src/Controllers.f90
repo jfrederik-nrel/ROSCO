@@ -888,12 +888,16 @@ CONTAINS
             END DO
 
             DebugVar%axisTilt_1P = LocalVar%PulseGenTq
-            DebugVar%axisYaw_1P =  NotchFilter(LocalVar%VS_RefSpd, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
-                                            LocalVar%FP,LocalVar%iStatus,LocalVar%restart,objInst%instNotch, LocalVar%VS_RefSpd) &
-                                                - LocalVar%VS_RefSpd_AWC
             IF (CntrPar%AWC_Mode == 8) THEN
+                DebugVar%axisYaw_1P = LocalVar%VS_RefSpd_AWC
                 DebugVar%axisTilt_2P = DebugVar%WE_Ct
+            ELSEIF (CntrPar%AWC_Mode == 7) THEN
+                DebugVar%axisYaw_1P =  NotchFilter(LocalVar%VS_RefSpd, LocalVar%DT, 2*PI*CntrPar%AWC_freq(1), 0.0, 0.8, &
+                                        LocalVar%FP, LocalVar%iStatus, LocalVar%restart, objInst%instNotch, LocalVar%VS_RefSpd) &
+                                         - LocalVar%VS_RefSpd_AWC
+                DebugVar%axisTilt_2P = LocalVar%GenSpeedF
             ELSE
+                DebugVar%axisYaw_1P =  LocalVar%VS_RefSpd
                 DebugVar%axisTilt_2P = LocalVar%GenSpeedF
             END IF
             DebugVar%axisYaw_2P = LocalVar%GenTq
